@@ -1,0 +1,8 @@
+{
+    "extends": "./node_modules/pcf-scripts/tsconfig_base.json",
+    "compilerOptions": {
+        "target": "ES6", // Remove this before deploying to production
+        "sourceMap": true,
+        "typeRoots": ["node_modules/@types"]
+    }
+}
