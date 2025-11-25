@@ -42,7 +42,7 @@ export class PCFGanttControl implements ComponentFramework.StandardControl<IInpu
 
         // Create a simple element
         const message = document.createElement("div");
-        message.innerText = "Hello there, from updateView!";
+        message.innerText = "Hello again, from updateView!";
         message.style.padding = "10px";
         message.style.backgroundColor = "#eef";
         message.style.border = "1px solid #99c";
