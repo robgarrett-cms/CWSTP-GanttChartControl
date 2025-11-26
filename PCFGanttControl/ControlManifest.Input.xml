@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="CMS.CWSTP" constructor="PCFGanttControl" version="0.0.11" display-name-key="PCFGanttControl" description-key="PCFGanttControl description" control-type="standard">
+  <control namespace="CMS.CWSTP" constructor="PCFGanttControl" version="0.1.0" display-name-key="PCFGanttControl" description-key="PCFGanttControl description" control-type="standard">
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -89,6 +89,9 @@
 
     <resources>
       <code path="index.ts" order="1"/>
+      <css path="css/PCFGanttChart.css" order="1" />
+      <resx path="strings/PCFGanttChart.1033.resx" version="1.0.0" />
+      <platform-library name="React" version="16.14.0" />
       <!-- UNCOMMENT TO ADD MORE RESOURCES
       <css path="css/PCFGanttControl.css" order="1" />
       <resx path="strings/PCFGanttControl.1033.resx" version="1.0.0" />

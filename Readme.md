@@ -18,6 +18,6 @@
 6. Run a Canvas app with the Gantt Chart displayed.
 7. Open developer tools in the browser. **Turn off page caching**.
 8. Use Requestly or Fiddler to redirect requests for the bundle.js file to the local instance.
-   I used the regex in a redirect: `/.+/PCFControls/cwstp_CMS.CWSTP.PCFGanttControl/.*bundle.js(?:\?.*)?$/`
+   I used the regex in a redirect: `/.+/PCFControls/.+/CMS.CWSTP.PCFGanttControl.bundle.js(?:\?.*)?$/`
 9. Open the `index.ts` file in the browser devtools sources tab.
 10. Add break points, refresh the page to debug.
