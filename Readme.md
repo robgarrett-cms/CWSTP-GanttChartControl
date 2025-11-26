@@ -6,14 +6,14 @@
 3. Run `npm i`
 4. Run `npm run build` to make sure everything builds.
 5. Change directory to the Solution folder.
-6. Run `dotnet build -c [Debug|Release]`
-7. Deploy the zip file in `bin/[Debug|Release]/` to PowerApps environment.
+6. Run `dotnet build -c Release`
+7. Deploy the zip file in `bin/Release/` to PowerApps environment.
 
-## Remote debugging (after an initial deployment)
+## Remote debugging
 1. Install Power Platform Cli tools in Visual Studio Code
 2. Open a terminal in VSCode
 3. Run `npm i`
-4. Run `npm run build` to make sure everything builds.
+4. Run `pac pcf push` make sure everything builds.
 5. Run `node ./serve.js` - this starts an express web server to host the current bundle file.
 6. Run a Canvas app with the Gantt Chart displayed.
 7. Open developer tools in the browser. **Turn off page caching**.
