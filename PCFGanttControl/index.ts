@@ -81,7 +81,10 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
         //     this._container.appendChild(message);
         // });
          const props: IGanttChartComponentProps = { 
-            entityDataset: context.parameters.entityDataSet
+            entityDataset: context.parameters.entityDataSet,
+            defaultTaskType: this._defaultTaskType,
+            taskTypeMap: this._taskTypeMap,
+            isDisabled: (context.parameters.displayMode.raw === "readonly")
         };
         return React.createElement(GanttChartComponent, props);
     }
@@ -102,25 +105,25 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
         // Add code to cleanup control if necessary
     }
 
-    private updateViewAsync = async (context: ComponentFramework.Context<IInputs>) => {
-        this._dataSet = context.parameters.entityDataSet;
-        // Get the columns from the dataset
-        const columns = this._dataSet.columns;
-        const nameField = columns.find((c) => c.alias === this._displayNameStr);
-        const startField = columns.find((c) => c.alias === this._scheduledStartStr);
-        const endField = columns.find((c) => c.alias === this._scheduledEndStr);
-        const progressField = columns.find((c) => c.alias === this._progressStr);
-        if (!nameField || !startField || !endField || !context.parameters.timeStep.raw) return;
-        try {
-            const tasks = await this.generateTasks(
-                context,
-                this._dataSet,
-                !!progressField
-            );
-        } catch (e) {
-            console.error(e);
-        }
-    };
+    // private updateViewAsync = async (context: ComponentFramework.Context<IInputs>) => {
+    //     this._dataSet = context.parameters.entityDataSet;
+    //     // Get the columns from the dataset
+    //     const columns = this._dataSet.columns;
+    //     const nameField = columns.find((c) => c.alias === this._displayNameStr);
+    //     const startField = columns.find((c) => c.alias === this._scheduledStartStr);
+    //     const endField = columns.find((c) => c.alias === this._scheduledEndStr);
+    //     const progressField = columns.find((c) => c.alias === this._progressStr);
+    //     if (!nameField || !startField || !endField || !context.parameters.timeStep.raw) return;
+    //     try {
+    //         const tasks = await this.generateTasks(
+    //             context,
+    //             this._dataSet,
+    //             !!progressField
+    //         );
+    //     } catch (e) {
+    //         console.error(e);
+    //     }
+    // };
 
     private generateTasks = async (
         context: ComponentFramework.Context<IInputs>,
