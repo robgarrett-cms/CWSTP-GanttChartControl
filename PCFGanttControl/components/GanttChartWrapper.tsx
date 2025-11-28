@@ -7,13 +7,11 @@ import { Xrm } from '../xrm';
 import { generate } from '@ant-design/colors';
 import { IInputs } from '../generated/ManifestTypes';
 
-type DataSet = ComponentFramework.PropertyTypes.DataSet;
 type EntityRecord = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
-type NullableString = string | null;
 
 export interface IGanttChartWrapperProps {
-    //entityDataset: DataSet;
     userTimeOffset: number;
+    container: HTMLDivElement;
     getContext: () => ComponentFramework.Context<IInputs>;
 }
 
@@ -186,6 +184,20 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
     React.useEffect(() => {
         if (entityDataset.loading) { return; }
         const fetchTasks = async () => {
+            // Get the columns
+            const columns = entityDataset.columns.sort((column1, column2) => column1.order - column2.order).map((column) => {
+                return {
+                    name: column.displayName,
+                    fieldName: column.name,
+                    minWidth: column.visualSizeFactor,
+                    key: column.name
+                }
+            });
+            const nameField = columns.find((c) => c.name === fieldNames.title)!;
+            const startField = columns.find((c) => c.name === fieldNames.startTime)!;
+            const endField = columns.find((c) => c.name === fieldNames.endTime)!;
+            const progressField = columns.find((c) => c.name === fieldNames.progress);
+
             // Get the items from the dataset.
             const myItems = entityDataset.sortedRecordIds.map((id) => {
                 const entity = entityDataset.records[id];
@@ -202,6 +214,33 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
             // Generate the tasks from the items.
             const tasks = await generateTasksAsync(myItems);
             setCachedTasks(tasks);
+            // Get the locale code.
+            const localeCode = await getLocalCodeAsync();
+            // Header display names.
+            const listCellWidth = context.parameters.listCellWidth.raw ? `${context.parameters.listCellWidth.raw}px` : "";
+            const recordDisplayName = context.parameters.customHeaderDisplayName.raw || nameField.name;
+            const startDisplayName = context.parameters.customHeaderStartName.raw || startField.name;
+            const endDisplayName = context.parameters.customHeaderEndName.raw || endField.name;
+            const progressFieldName = progressField ? progressField.name : "";
+            const progressDisplayName = context.parameters.customHeaderProgressName.raw || (progressField ? progressField.name : "");
+            // Height setup.
+            const rowHeight = context.parameters.rowHeight.raw ? context.parameters.rowHeight.raw : 50;
+            const headerHeight = context.parameters.headerHeight.raw ? context.parameters.headerHeight.raw : 50;
+            let ganttHeight: number | undefined;
+            if (context.mode.allocatedHeight !== -1) {
+                ganttHeight = context.mode.allocatedHeight - 15;
+            } else if (context.parameters.isSubgrid.raw === "no") {
+                ganttHeight = props.container.offsetHeight - 100;
+            }
+            //width setup
+            const columnWidthQuarter = context.parameters.columnWidthQuarter.raw || 0;
+            const columnWidthHalf = context.parameters.columnWidthHalf.raw || 0;
+            const columnWidthDay = context.parameters.columnWidthDay.raw || 0;
+            const columnWidthWeek = context.parameters.columnWidthWeek.raw || 0;
+            const columnWidthMonth = context.parameters.columnWidthMonth.raw || 0;
+            //
+            const includeTime = context.parameters.displayDateFormat.raw === "datetime";
+            const fontSize = context.parameters.fontSize.raw || "14px";
         }
         fetchTasks();
     }, [entityDataset.loading]);

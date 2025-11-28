@@ -6,6 +6,7 @@ type DataSet = ComponentFramework.PropertyTypes.DataSet;
 
 export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs, IOutputs> {
 
+    private _container: HTMLDivElement;
     private _crmUserTimeOffset: number;
 
     /**
@@ -25,13 +26,14 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
     public init(
         context: ComponentFramework.Context<IInputs>,
         notifyOutputChanged: () => void,
-        state: ComponentFramework.Dictionary
+        state: ComponentFramework.Dictionary,
+        container: HTMLDivElement
     ): void {
-        this._crmUserTimeOffset =
-            context.userSettings.getTimeZoneOffsetMinutes(new Date()) +
-            new Date().getTimezoneOffset();
+        context.mode.trackContainerResize(true);
         context.parameters.entityDataSet.paging.setPageSize(5000);
         context.parameters.entityDataSet.refresh();
+        this._container = container;
+        this._crmUserTimeOffset = context.userSettings.getTimeZoneOffsetMinutes(new Date()) + new Date().getTimezoneOffset();
     }
 
     /**
@@ -42,6 +44,7 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
     public updateView(context: ComponentFramework.Context<IInputs>): React.ReactElement {
         const props: IGanttChartWrapperProps = {
             userTimeOffset: this._crmUserTimeOffset,
+            container: this._container,
             getContext: () => context
         };
         return React.createElement(GanttChartWrapper, props);
