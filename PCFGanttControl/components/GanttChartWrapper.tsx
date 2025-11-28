@@ -201,6 +201,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
     return (
         <div>
             <div>Gantt Chart Component</div>
+            <div>{JSON.stringify(cachedTasks)}</div>
         </div>
     );
 });
