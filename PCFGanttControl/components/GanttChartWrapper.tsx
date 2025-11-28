@@ -2,15 +2,15 @@ import * as React from 'react';
 import { JSX } from 'react';
 import { Task, ViewMode } from "gantt-task-react";
 import { TaskType } from "gantt-task-react/dist/types/public-types";
-import { fieldNames } from './constants';
-import { Xrm } from './xrm';
+import { fieldNames } from '../constants';
+import { Xrm } from '../xrm';
 import { generate } from '@ant-design/colors';
 
 type DataSet = ComponentFramework.PropertyTypes.DataSet;
 type EntityRecord = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 type NullableString = string | null;
 
-export interface IGanttChartComponentProps {
+export interface IGanttChartWrapperProps {
     entityDataset: DataSet;
     userTimeOffset: number;
     isDisabled: boolean;
@@ -20,6 +20,7 @@ export interface IGanttChartComponentProps {
     customProgressSelectedColor: NullableString;
     allocatedHeight: number;
     viewMode: string;
+    locale: string;
     // Dataset callback for metadata retrieval
     getDatasetMetadata: (entityName: string, columns: string[]) => Promise<Record<string, unknown>>;
 }
@@ -32,7 +33,7 @@ interface ColorTheme {
     progressSelectedColor: string;
 }
 
-export const GanttChartComponent = React.memo((props: IGanttChartComponentProps): JSX.Element => {
+export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JSX.Element => {
 
     const [cachedTasks, setCachedTasks] = React.useState<Task[]>([]);
     const [cachedProjects, setCachedProjects] = React.useState<Record<string, boolean>>({});

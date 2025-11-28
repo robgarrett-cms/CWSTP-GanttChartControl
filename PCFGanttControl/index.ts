@@ -1,6 +1,5 @@
-/* eslint-disable */
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
-import { GanttChartComponent, IGanttChartComponentProps } from "./GanttControl";
+import { GanttChartWrapper, IGanttChartWrapperProps } from "./components/GanttChartWrapper";
 import * as React from "react";
 
 type DataSet = ComponentFramework.PropertyTypes.DataSet;
@@ -41,7 +40,7 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
      * @returns ReactElement root react element for the control
      */
     public updateView(context: ComponentFramework.Context<IInputs>): React.ReactElement {
-         const props: IGanttChartComponentProps = { 
+        const props: IGanttChartWrapperProps = {
             entityDataset: context.parameters.entityDataSet,
             userTimeOffset: this._crmUserTimeOffset,
             isDisabled: (context.parameters.displayMode.raw === "readonly"),
@@ -51,9 +50,10 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
             customProgressSelectedColor: context.parameters.customProgressSelectedColor.raw,
             allocatedHeight: Number(context.mode.allocatedHeight) || -1,
             viewMode: context.parameters.viewMode.raw,
+            locale: "en",
             getDatasetMetadata: context.utils.getEntityMetadata
         };
-        return React.createElement(GanttChartComponent, props);
+        return React.createElement(GanttChartWrapper, props);
     }
 
     /**
@@ -71,4 +71,21 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
     public destroy(): void {
         // Add code to cleanup control if necessary
     }
+
+    private getLocalCode = async (context: ComponentFramework.Context<IInputs>) => {
+        try {
+            const languages = await context.webAPI.retrieveMultipleRecords(
+                "languagelocale",
+                `?$select=code&$filter=localeid eq ${context.userSettings.languageId}`
+            );
+            if (languages.entities.length > 0) {
+                const code = languages.entities[0].code;
+                return code;
+            }
+        } catch (e) {
+            console.error(e);
+        }
+
+        return "en"; // English
+    };
 }
