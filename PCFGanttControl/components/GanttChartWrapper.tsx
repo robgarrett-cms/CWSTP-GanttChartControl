@@ -6,12 +6,14 @@ import { fieldNames } from '../constants';
 import { Xrm } from '../xrm';
 import { generate } from '@ant-design/colors';
 import { IInputs } from '../generated/ManifestTypes';
+import { GanttChartComponent } from './GanttChartComponent';
 
 type EntityRecord = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 
 export interface IGanttChartWrapperProps {
     userTimeOffset: number;
     container: HTMLDivElement;
+    viewMode: ViewMode;
     getContext: () => ComponentFramework.Context<IInputs>;
 }
 
@@ -24,9 +26,11 @@ interface ColorTheme {
 }
 
 export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JSX.Element => {
-
+    // State
     const [cachedTasks, setCachedTasks] = React.useState<Task[]>([]);
     const [cachedProjects, setCachedProjects] = React.useState<Record<string, boolean>>({});
+    const [ganttChartComponent, setGanttChartComponent] = React.useState<JSX.Element | null>(null);
+    //
     const taskTypeMap: Record<number, TaskType> = { 1: "task", 2: "milestone", 3: "project" };
     const defaultTaskType: TaskType = "task";
     const context = props.getContext();
@@ -181,6 +185,12 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         return "en"; // English
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    const handleViewModeChange = (viewMode: ViewMode) => {}
+
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    const handleExpanderStateChange = (itemId: string, expanderState: boolean) => {}
+
     React.useEffect(() => {
         if (entityDataset.loading) { return; }
         const fetchTasks = async () => {
@@ -232,7 +242,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
             } else if (context.parameters.isSubgrid.raw === "no") {
                 ganttHeight = props.container.offsetHeight - 100;
             }
-            //width setup
+            // Width setup
             const columnWidthQuarter = context.parameters.columnWidthQuarter.raw || 0;
             const columnWidthHalf = context.parameters.columnWidthHalf.raw || 0;
             const columnWidthDay = context.parameters.columnWidthDay.raw || 0;
@@ -241,13 +251,46 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
             //
             const includeTime = context.parameters.displayDateFormat.raw === "datetime";
             const fontSize = context.parameters.fontSize.raw || "14px";
+            // Create the Gantt Chart component.
+            const ganttChart = React.createElement(GanttChartComponent, {
+                context,
+                tasks,
+                ganttHeight,
+                recordDisplayName,
+                startDisplayName,
+                endDisplayName,
+                progressDisplayName,
+                startFieldName: startField.name,
+                endFieldName: endField.name,
+                progressFieldName: progressFieldName,
+                listCellWidth: listCellWidth,
+                timeStep: context.parameters.timeStep.raw || 15,
+                rowHeight: rowHeight,
+                headerHeight: headerHeight,
+                isProgressing: !!progressField,
+                viewMode: props.viewMode,
+                includeTime: includeTime,
+                locale: localeCode,
+                rtl: context.userSettings.isRTL,
+                crmUserTimeOffset: props.userTimeOffset,
+                fontSize,
+                columnWidthQuarter,
+                columnWidthHalf,
+                columnWidthDay,
+                columnWidthWeek,
+                columnWidthMonth,
+                onViewChange: handleViewModeChange,
+                onExpanderStateChange: handleExpanderStateChange,
+            });
+            setGanttChartComponent(ganttChart);
         }
         fetchTasks();
     }, [entityDataset.loading]);
     return (
         <div>
             <div>Gantt Chart Component</div>
-            <div>{JSON.stringify(cachedTasks)}</div>
+            <div className='myTestClass'>{JSON.stringify(cachedTasks)}</div>
+            <div>{ganttChartComponent}</div>
         </div>
     );
 });

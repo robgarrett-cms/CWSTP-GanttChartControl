@@ -1,6 +1,7 @@
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import { GanttChartWrapper, IGanttChartWrapperProps } from "./components/GanttChartWrapper";
 import * as React from "react";
+import { ViewMode } from "gantt-task-react";
 
 type DataSet = ComponentFramework.PropertyTypes.DataSet;
 
@@ -8,6 +9,7 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
 
     private _container: HTMLDivElement;
     private _crmUserTimeOffset: number;
+    private _viewMode: ViewMode;
 
     /**
      * Empty constructor.
@@ -33,6 +35,7 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
         context.parameters.entityDataSet.paging.setPageSize(5000);
         context.parameters.entityDataSet.refresh();
         this._container = container;
+        this._viewMode = context.parameters.viewMode.raw as ViewMode;
         this._crmUserTimeOffset = context.userSettings.getTimeZoneOffsetMinutes(new Date()) + new Date().getTimezoneOffset();
     }
 
@@ -45,6 +48,7 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
         const props: IGanttChartWrapperProps = {
             userTimeOffset: this._crmUserTimeOffset,
             container: this._container,
+            viewMode: this._viewMode,
             getContext: () => context
         };
         return React.createElement(GanttChartWrapper, props);

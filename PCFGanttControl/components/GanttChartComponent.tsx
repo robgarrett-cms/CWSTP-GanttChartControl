@@ -46,42 +46,42 @@ export const GanttChartComponent: React.FunctionComponent<GanttChartComponentPro
     const { context } = props;
     // Events
     const handleDateChange = async (task: Task) => {
-        // const recordRef = context.parameters.entityDataSet.records[task.id].getNamedReference();
+        const recordRef = context.parameters.entityDataSet.records[task.id].getNamedReference();
         // const entityName = recordRef.etn || ((recordRef as any).logicalName as string);
-        // let resultState = true;
-        // try {
-        //     await context.webAPI.updateRecord(entityName, task.id, {
-        //         [props.endFieldName]: new Date(
-        //             task.end.getTime() - props.crmUserTimeOffset * 60000
-        //         ),
-        //         [props.startFieldName]: new Date(
-        //             task.start.getTime() - props.crmUserTimeOffset * 60000
-        //         ),
-        //     });
-        // } catch (e) {
-        //     console.error(e);
-        //     resultState = false;
-        // }
-        // context.parameters.entityDataSet.refresh();
-        // return resultState;
-        return true;
+        const entityName = recordRef.etn || "";
+        let resultState = true;
+        try {
+            await context.webAPI.updateRecord(entityName, task.id, {
+                [props.endFieldName]: new Date(
+                    task.end.getTime() - props.crmUserTimeOffset * 60000
+                ),
+                [props.startFieldName]: new Date(
+                    task.start.getTime() - props.crmUserTimeOffset * 60000
+                ),
+            });
+        } catch (e) {
+            console.error(e);
+            resultState = false;
+        }
+        context.parameters.entityDataSet.refresh();
+        return resultState;
     };
 
     const handleProgressChange = async (task: Task) => {
-        // const recordRef = context.parameters.entityDataSet.records[task.id].getNamedReference();
+        const recordRef = context.parameters.entityDataSet.records[task.id].getNamedReference();
         // const entityName = recordRef.etn || ((recordRef as any).logicalName as string);
-        // let resultState = true;
-        // try {
-        //     await context.webAPI.updateRecord(entityName, task.id, {
-        //         [props.progressFieldName]: task.progress,
-        //     });
-        // } catch (e) {
-        //     console.error(e);
-        //     resultState = false;
-        // }
-        // context.parameters.entityDataSet.refresh();
-        // return resultState;
-        return true;
+        const entityName = recordRef.etn || "";
+        let resultState = true;
+        try {
+            await context.webAPI.updateRecord(entityName, task.id, {
+                [props.progressFieldName]: task.progress,
+            });
+        } catch (e) {
+            console.error(e);
+            resultState = false;
+        }
+        context.parameters.entityDataSet.refresh();
+        return resultState;
     };
 
     const handleOpenRecord = async (task: Task) => {

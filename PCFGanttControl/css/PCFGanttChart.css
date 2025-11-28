@@ -1,0 +1,356 @@
+.myTestClass {
+    border: solid 1px red;
+}
+
+.Gantt-Wrapper {
+    font-family: "SegoeUI, Segoe UI";
+}
+
+.Gantt-Footer_Wrapper {
+    display: flex;
+    margin: 1rem;
+    justify-content: space-between;
+}
+
+.Gantt-Footer_Paging-Text {
+    font-size: 0.857143rem;
+    font-family: "SegoeUI, Segoe UI";
+    color: rgb(51, 51, 51);
+    border: 0;
+    margin: 0;
+    padding: 0;
+    font-style: normal;
+    font-variant: normal;
+    font-weight: normal;
+    margin-right: 1rem;
+    margin-left: 1rem;
+}
+
+.Gantt-Footer_Action {
+    display: flex;
+    flex-direction: row;
+}
+
+.Gantt-Footer_Button-Icon {
+    color: rgb(102, 102, 102);
+    font-size: 1.6rem;
+    margin-top: -0.8rem;
+}
+
+.Gantt-Footer_Button-Icon__Start::after {
+    content: "\21E4";
+}
+
+.Gantt-Footer_Button-Icon__Back::after {
+    content: "\2190";
+}
+
+.Gantt-Footer_Button-Icon__Next::after {
+    content: "\2192";
+}
+
+.loader-modal {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    background-color: rgba(31, 32, 41, 0.1);
+    pointer-events: none;
+    transition: opacity 250ms 700ms ease;
+    box-sizing: border-box;
+}
+
+.loader-roller {
+    display: inline-block;
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.loader-roller div {
+    animation: loader-roller 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    transform-origin: 40px 40px;
+}
+
+.loader-roller div:after {
+    content: " ";
+    display: block;
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #0078d4;
+    margin: -4px 0 0 -4px;
+}
+
+.loader-roller div:nth-child(1) {
+    animation-delay: -0.036s;
+}
+
+.loader-roller div:nth-child(1):after {
+    top: 63px;
+    left: 63px;
+}
+
+.loader-roller div:nth-child(2) {
+    animation-delay: -0.072s;
+}
+
+.loader-roller div:nth-child(2):after {
+    top: 68px;
+    left: 56px;
+}
+
+.loader-roller div:nth-child(3) {
+    animation-delay: -0.108s;
+}
+
+.loader-roller div:nth-child(3):after {
+    top: 71px;
+    left: 48px;
+}
+
+.loader-roller div:nth-child(4) {
+    animation-delay: -0.144s;
+}
+
+.loader-roller div:nth-child(4):after {
+    top: 72px;
+    left: 40px;
+}
+
+.loader-roller div:nth-child(5) {
+    animation-delay: -0.18s;
+}
+
+.loader-roller div:nth-child(5):after {
+    top: 71px;
+    left: 32px;
+}
+
+.loader-roller div:nth-child(6) {
+    animation-delay: -0.216s;
+}
+
+.loader-roller div:nth-child(6):after {
+    top: 68px;
+    left: 24px;
+}
+
+.loader-roller div:nth-child(7) {
+    animation-delay: -0.252s;
+}
+
+.loader-roller div:nth-child(7):after {
+    top: 63px;
+    left: 17px;
+}
+
+.loader-roller div:nth-child(8) {
+    animation-delay: -0.288s;
+}
+
+.loader-roller div:nth-child(8):after {
+    top: 56px;
+    left: 12px;
+}
+
+@keyframes loader-roller {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.Gantt-Tooltip_Container {
+    background: #fff;
+    padding: 12px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+}
+
+.Gantt-Tooltip_Paragraph__Information {
+    font-weight: 700;
+}
+
+.Gantt-Tooltip_Paragraph {
+    font-size: 12px;
+    margin-bottom: 6px;
+    color: #666;
+}
+
+.Gantt-Table {
+    display: table;
+    border-bottom: #e6e4e4 1px solid;
+    border-top: #e6e4e4 1px solid;
+    border-left: #e6e4e4 1px solid;
+}
+
+.Gantt-Table_Header {
+    display: table-row;
+    list-style: none;
+}
+
+.Gantt-Table_Header-Separator {
+    border-right: 1px solid rgb(196, 196, 196);
+    opacity: 1;
+    margin-left: -2px;
+}
+
+.Gantt-Table_Header-Item {
+    display: table-cell;
+    vertical-align: -webkit-baseline-middle;
+    vertical-align: middle;
+}
+
+.Gantt-Button {
+    background-color: transparent;
+    overflow: visible;
+    border-radius: inherit;
+    cursor: pointer;
+    text-indent: 0px;
+    text-shadow: none;
+    text-align: center;
+    align-items: flex-start;
+    box-sizing: border-box;
+    border-style: none;
+    border-image: initial;
+    outline: none;
+}
+
+.Gantt-Header {
+    list-style: none;
+    -ms-box-orient: horizontal;
+    display: flex;
+    -webkit-justify-content: flex-end;
+    justify-content: flex-end;
+}
+
+.Gantt-Button_Header {
+    margin: 0.5rem;
+    text-transform: uppercase;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.Gantt-Header_Separator {
+    text-align: center;
+    vertical-align: middle;
+    margin-top: 0.5rem;
+}
+
+.Gantt-Header_Select__Icon {
+    min-width: 30px;
+    text-align: center;
+}
+
+.Gantt-Header_Select__Icon::after {
+    content: "\2714";
+}
+
+.Gantt-Task-List_Wrapper {
+    display: table;
+    border-bottom: #e6e4e4 1px solid;
+    border-left: #e6e4e4 1px solid;
+}
+
+.Gantt-Task-List_Row {
+    display: table-row;
+    text-overflow: ellipsis;
+}
+
+.Gantt-Task-List_Row:nth-of-type(even) {
+    background-color: #f5f5f5;
+}
+
+.Gantt-Task-List_Cell {
+    display: table-cell;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.Gantt-Task-List_Cell__Link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgb(4, 89, 153);
+    cursor: pointer;
+}
+
+.Gantt-Task-List_Cell__Link:hover {
+    color: rgb(4, 67, 124);
+    text-decoration: underline;
+}
+
+.Gantt-Task-List-Checkbox {
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+    margin: 0.5rem;
+}
+
+.Gantt-Task-List_Row:hover .Gantt-Task-List-Checkbox {
+    border: 0.1rem #605e5c solid;
+    width: 1rem;
+    height: 1rem;
+}
+
+.Gantt-Task-List-Checkbox:hover:after {
+    display: block;
+    position: relative;
+    content: "";
+    left: 31%;
+    top: 15%;
+    width: 19%;
+    height: 40%;
+    border: solid #605e5c;
+    border-width: 0 0.1rem 0.1rem 0;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+}
+
+.Gantt-Task-List-Checkbox__Checked {
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+    background: #0078d4;
+    margin: 0.5rem;
+}
+
+.Gantt-Task-List-Checkbox__Checked:after {
+    display: block;
+    position: relative;
+    content: "";
+    left: 35%;
+    top: 15%;
+    width: 19%;
+    height: 40%;
+    border: solid white;
+    border-width: 0 0.143rem 0.143rem 0;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+}
+
+.Gantt-Task-List_Cell__Expander {
+    color: rgb(86 86 86);
+    font-size: 0.6rem;
+    padding: 0.15rem 0.2rem 0rem 0.2rem;
+    user-select: none;
+    cursor: pointer;
+}
+
+.Gantt-Task-List_Cell__Empty-Expander {
+    font-size: 0.6rem;
+    padding-left: 1rem;
+    user-select: none;
+}
+
+.Gantt-Task-List_Name-Container {
+    display: flex;
+}
