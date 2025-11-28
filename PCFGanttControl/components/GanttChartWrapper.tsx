@@ -5,24 +5,16 @@ import { TaskType } from "gantt-task-react/dist/types/public-types";
 import { fieldNames } from '../constants';
 import { Xrm } from '../xrm';
 import { generate } from '@ant-design/colors';
+import { IInputs } from '../generated/ManifestTypes';
 
 type DataSet = ComponentFramework.PropertyTypes.DataSet;
 type EntityRecord = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 type NullableString = string | null;
 
 export interface IGanttChartWrapperProps {
-    entityDataset: DataSet;
+    //entityDataset: DataSet;
     userTimeOffset: number;
-    isDisabled: boolean;
-    customBackgroundColor: NullableString;
-    customBackgroundSelectedColor: NullableString;
-    customProgressColor: NullableString;
-    customProgressSelectedColor: NullableString;
-    allocatedHeight: number;
-    viewMode: string;
-    locale: string;
-    // Dataset callback for metadata retrieval
-    getDatasetMetadata: (entityName: string, columns: string[]) => Promise<Record<string, unknown>>;
+    getContext: () => ComponentFramework.Context<IInputs>;
 }
 
 interface ColorTheme {
@@ -39,26 +31,28 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
     const [cachedProjects, setCachedProjects] = React.useState<Record<string, boolean>>({});
     const taskTypeMap: Record<number, TaskType> = { 1: "task", 2: "milestone", 3: "project" };
     const defaultTaskType: TaskType = "task";
+    const context = props.getContext();
+    const entityDataset = context.parameters.entityDataSet;
 
-    const generateTasks = (items: unknown[]): Task[] => {
+    const generateTasksAsync = async (items: unknown[]): Promise<Task[]> => {
         const entityTypesAndColors: ColorTheme[] = [];
         const tasks: Task[] = [];
         const projects: Record<string, boolean> = { ...cachedProjects };
         // Iterate the records (entities) in the dataset.
-        items.forEach((item: unknown) => {
+        for (const item of items) {
             const record = (item as Record<string, unknown>).raw as EntityRecord;
             const name = record?.getValue(fieldNames.title) as string
             const start = record?.getValue(fieldNames.startTime) as string;
             const end = record?.getValue(fieldNames.endTime) as string;
             // We require at least name, start, and end to create a task.
-            if (!name || !start || !end) return;
+            if (!name || !start || !end) continue;
             const progress = record?.getValue(fieldNames.progress) as number || 0;
             const taskTypeOption = record?.getValue(fieldNames.taskType) as number | undefined;
             const parentRecord = record?.getValue(fieldNames.parentRecord) as ComponentFramework.EntityReference | 0;
             const colorText = record?.getValue(fieldNames.displayColorText) as string;
             const colorOption = record?.getValue(fieldNames.displayColorOption) as string;
             const taskType = getTaskType(taskTypeOption);
-            const optionColumn = props.entityDataset.columns.find((c) => c.alias == fieldNames.displayColorOption);
+            const optionColumn = entityDataset.columns.find((c) => c.alias == fieldNames.displayColorOption);
             const optionLogicalName = optionColumn ? optionColumn.name : "";
             // Get the logical name of the entity to which the record belongs.
             const entRef = record.getNamedReference();
@@ -66,19 +60,11 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
             let entityColorTheme = entityTypesAndColors.find((e) => e.entityLogicalName === entityLogicalName);
             // If we didn't get the color theme from the cache, generate it.
             if (!entityColorTheme || colorText || optionLogicalName) {
-                generateColorThemeAsync(
-                    entityLogicalName,
+                entityColorTheme = await generateColorThemeAsync(entityLogicalName,
                     colorText,
                     colorOption,
-                    optionLogicalName
-                ).then((colorTheme) => {
-                    entityTypesAndColors.push(colorTheme);
-                    entityColorTheme = colorTheme;
-                    return colorTheme
-                }).catch((e) => {
-                    console.error(`Error generating color theme for entity ${entityLogicalName}. Error text: ${e}`);
-                    throw e;
-                });
+                    optionLogicalName);
+                entityTypesAndColors.push(entityColorTheme);
             }
             try {
                 const taskId = record.getRecordId();
@@ -90,7 +76,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                     end: new Date(new Date(end).getTime() + props.userTimeOffset * 60000),
                     progress: progress,
                     type: taskType,
-                    isDisabled: props.isDisabled,
+                    isDisabled: (context.parameters.displayMode.raw === "readonly"),
                     styles: { ...entityColorTheme },
                 };
                 if (taskType === "project") {
@@ -109,7 +95,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                     // Determine if the parent is a project or a task 
                     // and thus if the current entity is a dependant task or child task
                     const parentRecordId = parentRecord.id.guid;
-                    const parentRecordRef = props.entityDataset.records[parentRecordId];
+                    const parentRecordRef = entityDataset.records[parentRecordId];
                     if (parentRecordRef) {
                         const parentTypeOption = parentRecordRef.getValue(fieldNames.taskType) as number | undefined;
                         const parentType = getTaskType(parentTypeOption);
@@ -125,8 +111,8 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 throw new Error(
                     `Create task error. Record id: ${record.getRecordId()}, name: ${name}, start time: ${start}, end time: ${end}, progress: ${progress}. Error text ${e}`
                 );
-            } 
-        });
+            }
+        }
         setCachedProjects(projects);
         return tasks;
     };
@@ -147,17 +133,17 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
     ): Promise<ColorTheme> => {
         let entityColor = fieldNames.defaultEntityColor;
         // Model App
-        const height = props.allocatedHeight
+        const height = Number(context.mode.allocatedHeight) || -1
         if (height === -1 && !colorText) {
             if (optionValue) {
                 // Get by color by OptionSet Color
-                const result = await props.getDatasetMetadata(entName, [optionLogicalName]);
+                const result = await context.utils.getEntityMetadata(entName, [optionLogicalName]);
                 const attributes: Xrm.EntityMetadata.AttributesCollection = result["Attributes"] as Xrm.EntityMetadata.AttributesCollection;
                 const optionMetadata = attributes.getByName(optionLogicalName);
                 entityColor = optionMetadata.attributeDescriptor.OptionSet.find((o) => o.Value === +optionValue)?.Color ?? entityColor;
             } else {
                 // Get by Entity Color
-                const result = await props.getDatasetMetadata(entName, ["EntityColor"]);
+                const result = await context.utils.getEntityMetadata(entName, ["EntityColor"]);
                 entityColor = result["EntityColor"] as string;
             }
         } else if (colorText) {
@@ -166,10 +152,10 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         }
         // Use a pallette generator to create the color theme.
         const colors = generate(entityColor);
-        const backgroundColor = props.customBackgroundColor || colors[2];
-        const backgroundSelectedColor = props.customBackgroundSelectedColor || colors[3];
-        const progressColor = props.customProgressColor || colors[4];
-        const progressSelectedColor = props.customProgressSelectedColor || colors[5];
+        const backgroundColor = context.parameters.customBackgroundColor.raw || colors[2];
+        const backgroundSelectedColor = context.parameters.customBackgroundSelectedColor.raw || colors[3];
+        const progressColor = context.parameters.customProgressColor.raw || colors[4];
+        const progressSelectedColor = context.parameters.customProgressSelectedColor.raw || colors[5];
 
         return {
             entityLogicalName: entName,
@@ -180,24 +166,45 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         };
     }
 
-    React.useEffect(() => {
-        if (props.entityDataset.loading) { return; }
-        // Get the items from the dataset.
-        const myItems = props.entityDataset.sortedRecordIds.map((id) => {
-            const entity = props.entityDataset.records[id];
-            const attributes = props.entityDataset.columns.map((column) => {
-                return { [column.name]: entity.getFormattedValue(column.name) }
+    const getLocalCodeAsync = async () => {
+        try {
+            const languages = await context.webAPI.retrieveMultipleRecords(
+                "languagelocale",
+                `?$select=code&$filter=localeid eq ${context.userSettings.languageId}`
+            );
+            if (languages.entities.length > 0) {
+                const code = languages.entities[0].code;
+                return code;
+            }
+        } catch (e) {
+            console.error(e);
+        }
 
-            });
-            return Object.assign({
-                key: entity.getRecordId(),
-                parentId: (entity.getValue("parentRecord") as ComponentFramework.EntityReference | undefined)?.id.guid,
-                raw: entity,
-            }, ...attributes);
-        }).sort((a, b) => a.parentId < b.parentId ? -1 : a.parentId < b.parentId ? 1 : 0);
-        // Generate the tasks from the items.
-        setCachedTasks(generateTasks(myItems));
-    }, [props.entityDataset]);
+        return "en"; // English
+    };
+
+    React.useEffect(() => {
+        if (entityDataset.loading) { return; }
+        const fetchTasks = async () => {
+            // Get the items from the dataset.
+            const myItems = entityDataset.sortedRecordIds.map((id) => {
+                const entity = entityDataset.records[id];
+                const attributes = entityDataset.columns.map((column) => {
+                    return { [column.name]: entity.getFormattedValue(column.name) }
+
+                });
+                return Object.assign({
+                    key: entity.getRecordId(),
+                    parentId: (entity.getValue("parentRecord") as ComponentFramework.EntityReference | undefined)?.id.guid,
+                    raw: entity,
+                }, ...attributes);
+            }).sort((a, b) => a.parentId < b.parentId ? -1 : a.parentId < b.parentId ? 1 : 0);
+            // Generate the tasks from the items.
+            const tasks = await generateTasksAsync(myItems);
+            setCachedTasks(tasks);
+        }
+        fetchTasks();
+    }, [entityDataset.loading]);
     return (
         <div>
             <div>Gantt Chart Component</div>
