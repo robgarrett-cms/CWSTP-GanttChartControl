@@ -27,7 +27,6 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
     private _defaultEntityColor = "#2975B2";
     private _projects: Record<string, boolean>;
     private _defaultTaskType: TaskType = "task";
-    private _taskTypeMap: Record<number, TaskType> = { 1: "task", 2: "milestone", 3: "project" };
 
     /**
      * Empty constructor.
@@ -57,34 +56,20 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
         context.parameters.entityDataSet.refresh();
     }
 
-
     /**
      * Called when any value in the property bag has changed. This includes field values, data-sets, global values such as container height and width, offline status, control metadata values such as label, visible, etc.
      * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to names defined in the manifest, as well as utility functions
      * @returns ReactElement root react element for the control
      */
     public updateView(context: ComponentFramework.Context<IInputs>): React.ReactElement {
-        // this._dataSet = context.parameters.entityDataSet;
-        // this.updateViewAsync(context).catch(error => { console.error("updateViewAsync failed:", error); }).then(() => {
-            
-        //     // Clear previous content
-        //     this._container.innerHTML = "";
-
-        //     // Create a simple element
-        //     const message = document.createElement("div");
-        //     message.innerText = "This is a placeholder (v0.1.0)";
-        //     message.style.padding = "10px";
-        //     message.style.backgroundColor = "#eef";
-        //     message.style.border = "1px solid #99c";
-
-        //     // Append to container
-        //     this._container.appendChild(message);
-        // });
          const props: IGanttChartComponentProps = { 
             entityDataset: context.parameters.entityDataSet,
-            defaultTaskType: this._defaultTaskType,
-            taskTypeMap: this._taskTypeMap,
-            isDisabled: (context.parameters.displayMode.raw === "readonly")
+            userTimeOffset: this._crmUserTimeOffset,
+            isDisabled: (context.parameters.displayMode.raw === "readonly"),
+            customBackgroundColor: context.parameters.customBackgroundColor.raw,
+            customBackgroundSelectedColor: context.parameters.customBackgroundSelectedColor.raw,
+            customProgressColor: context.parameters.customProgressColor.raw,
+            customProgressSelectedColor: context.parameters.customProgressSelectedColor.raw
         };
         return React.createElement(GanttChartComponent, props);
     }
@@ -104,26 +89,6 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
     public destroy(): void {
         // Add code to cleanup control if necessary
     }
-
-    // private updateViewAsync = async (context: ComponentFramework.Context<IInputs>) => {
-    //     this._dataSet = context.parameters.entityDataSet;
-    //     // Get the columns from the dataset
-    //     const columns = this._dataSet.columns;
-    //     const nameField = columns.find((c) => c.alias === this._displayNameStr);
-    //     const startField = columns.find((c) => c.alias === this._scheduledStartStr);
-    //     const endField = columns.find((c) => c.alias === this._scheduledEndStr);
-    //     const progressField = columns.find((c) => c.alias === this._progressStr);
-    //     if (!nameField || !startField || !endField || !context.parameters.timeStep.raw) return;
-    //     try {
-    //         const tasks = await this.generateTasks(
-    //             context,
-    //             this._dataSet,
-    //             !!progressField
-    //         );
-    //     } catch (e) {
-    //         console.error(e);
-    //     }
-    // };
 
     private generateTasks = async (
         context: ComponentFramework.Context<IInputs>,
@@ -153,8 +118,7 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
             const optionValue = record.getValue(this._displayColorOption) as string;
             const optionColumn = dataset.columns.find((c) => c.alias == this._displayColorOption);
             const optionLogicalName = optionColumn ? optionColumn.name : "";
-            const taskType = this.getTaskType(taskTypeOption);
-
+            
             // Get the entity logical name from the record
             const entRef = record.getNamedReference();
             const entName = entRef.etn || (<any>entRef).logicalName as string;
@@ -177,18 +141,18 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
             // We require at least name, start, and end to create a task.
             if (!name || !start || !end) return;
             try {
-                const taskId = record.getRecordId();
-                const task: Task = {
-                    id: taskId,
-                    name,
-                    // Start and End times are offsets from UTC in milliseconds.
-                    start: new Date(new Date(start).getTime() + this._crmUserTimeOffset * 60000),
-                    end: new Date(new Date(end).getTime() + this._crmUserTimeOffset * 60000),
-                    progress: progress,
-                    type: taskType,
-                    isDisabled: isDisabled,
-                    styles: { ...entityColorTheme },
-                };
+                // const taskId = record.getRecordId();
+                // const task: Task = {
+                //     id: taskId,
+                //     name,
+                //     // Start and End times are offsets from UTC in milliseconds.
+                //     start: new Date(new Date(start).getTime() + this._crmUserTimeOffset * 60000),
+                //     end: new Date(new Date(end).getTime() + this._crmUserTimeOffset * 60000),
+                //     progress: progress,
+                //     type: taskType,
+                //     isDisabled: isDisabled,
+                //     styles: { ...entityColorTheme },
+                // };
 
                 // if (taskType === "project") {
                 //     // Look for the project in the expander state map
@@ -202,24 +166,24 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
                 //         task.hideChildren = this._projects[taskId];
                 //     }
                 // }
-                if (parentRecord) {
-                    // Determine if the parent is a project or a task 
-                    // and thus if the current entity is a dependant task or child task
-                    const parentRecordId = parentRecord.id.guid;
-                    const parentRecordRef = dataset.records[parentRecordId];
-                    if (parentRecordRef) {
-                        // const parentType = this.getTaskType(
-                        //     (parentRecordRef.getValue(this._taskTypeOption) as string),
-                        //     context.parameters.taskTypeMapping.raw
-                        // );
-                        // if (parentType === "project") {
-                        //     task.project = parentRecordId;
-                        // } else {
-                        //     task.dependencies = [parentRecordId];
-                        // }
-                    }
-                }
-                tasks.push(task);
+                // if (parentRecord) {
+                //     // Determine if the parent is a project or a task 
+                //     // and thus if the current entity is a dependant task or child task
+                //     const parentRecordId = parentRecord.id.guid;
+                //     const parentRecordRef = dataset.records[parentRecordId];
+                //     if (parentRecordRef) {
+                //         // const parentType = this.getTaskType(
+                //         //     (parentRecordRef.getValue(this._taskTypeOption) as string),
+                //         //     context.parameters.taskTypeMapping.raw
+                //         // );
+                //         // if (parentType === "project") {
+                //         //     task.project = parentRecordId;
+                //         // } else {
+                //         //     task.dependencies = [parentRecordId];
+                //         // }
+                //     }
+                // }
+                // tasks.push(task);
             } catch (e) {
                 throw new Error(
                     `Create task error. Record id: ${record.getRecordId()}, name: ${name}, start time: ${start}, end time: ${end}, progress: ${progress}. Error text ${e}`
@@ -227,13 +191,5 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
             }
         });
         return tasks;
-    }
-
-    private getTaskType = (taskTypeOption: number): TaskType => {
-        let taskType: TaskType = this._defaultTaskType;
-        if (taskTypeOption) {
-            taskType = this._taskTypeMap[taskTypeOption] || this._defaultTaskType;
-        }
-        return taskType;
     }
 }

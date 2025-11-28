@@ -3,5 +3,9 @@ export const fieldNames = {
     startTime: "startTime",
     endTime: "endTime",
     progress: "progress",
-    taskType: "tasktype"
+    taskType: "taskTypeOption",
+    parentRecord: "parentRecord",
+    displayColorText: "displayColorText",
+    displayColorOption: "displayColorOption",
+    defaultEntityColor: "#2975B2"
 };
