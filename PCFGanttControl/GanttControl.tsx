@@ -18,6 +18,10 @@ export interface IGanttChartComponentProps {
     customBackgroundSelectedColor: NullableString;
     customProgressColor: NullableString;
     customProgressSelectedColor: NullableString;
+    allocatedHeight: number;
+    viewMode: string;
+    // Dataset callback for metadata retrieval
+    getDatasetMetadata: (entityName: string, columns: string[]) => Promise<Record<string, unknown>>;
 }
 
 interface ColorTheme {
@@ -100,15 +104,29 @@ export const GanttChartComponent = React.memo((props: IGanttChartComponentProps)
                         task.hideChildren = projects[taskId];
                     }
                 }
+                if (parentRecord) {
+                    // Determine if the parent is a project or a task 
+                    // and thus if the current entity is a dependant task or child task
+                    const parentRecordId = parentRecord.id.guid;
+                    const parentRecordRef = props.entityDataset.records[parentRecordId];
+                    if (parentRecordRef) {
+                        const parentTypeOption = parentRecordRef.getValue(fieldNames.taskType) as number | undefined;
+                        const parentType = getTaskType(parentTypeOption);
+                        if (parentType === "project") {
+                            task.project = parentRecordId;
+                        } else {
+                            task.dependencies = [parentRecordId];
+                        }
+                    }
+                }
+                tasks.push(task);
             } catch (e) {
                 throw new Error(
                     `Create task error. Record id: ${record.getRecordId()}, name: ${name}, start time: ${start}, end time: ${end}, progress: ${progress}. Error text ${e}`
                 );
-            } finally {
-                // Save projects expander state map
-                setCachedProjects(projects);
-            }
+            } 
         });
+        setCachedProjects(projects);
         return tasks;
     };
 
@@ -128,23 +146,23 @@ export const GanttChartComponent = React.memo((props: IGanttChartComponentProps)
     ): Promise<ColorTheme> => {
         let entityColor = fieldNames.defaultEntityColor;
         // Model App
-        // const height = Number(props.context.mode.allocatedHeight) || -1;
-        // if (height === -1 && !colorText) {
-        //     if (optionValue) {
-        //         // Get by color by OptionSet Color
-        //         const result = await props.context.utils.getEntityMetadata(entName, [optionLogicalName]);
-        //         const attributes: Xrm.EntityMetadata.AttributesCollection = result["Attributes"];
-        //         const optionMetadata = attributes.getByName(optionLogicalName);
-        //         entityColor = optionMetadata.attributeDescriptor.OptionSet.find((o) => o.Value === +optionValue)?.Color ?? entityColor;
-        //     } else {
-        //         // Get by Entity Color
-        //         const result = await props.context.utils.getEntityMetadata(entName, ["EntityColor"]);
-        //         entityColor = result["EntityColor"];
-        //     }
-        // } else if (colorText) {
-        //     // Get color by hex text value
-             entityColor = colorText;
-        // }
+        const height = props.allocatedHeight
+        if (height === -1 && !colorText) {
+            if (optionValue) {
+                // Get by color by OptionSet Color
+                const result = await props.getDatasetMetadata(entName, [optionLogicalName]);
+                const attributes: Xrm.EntityMetadata.AttributesCollection = result["Attributes"] as Xrm.EntityMetadata.AttributesCollection;
+                const optionMetadata = attributes.getByName(optionLogicalName);
+                entityColor = optionMetadata.attributeDescriptor.OptionSet.find((o) => o.Value === +optionValue)?.Color ?? entityColor;
+            } else {
+                // Get by Entity Color
+                const result = await props.getDatasetMetadata(entName, ["EntityColor"]);
+                entityColor = result["EntityColor"] as string;
+            }
+        } else if (colorText) {
+            // Get color by hex text value
+            entityColor = colorText;
+        }
         // Use a pallette generator to create the color theme.
         const colors = generate(entityColor);
         const backgroundColor = props.customBackgroundColor || colors[2];
@@ -180,7 +198,9 @@ export const GanttChartComponent = React.memo((props: IGanttChartComponentProps)
         setCachedTasks(generateTasks(myItems));
     }, [props.entityDataset]);
     return (
-        <div>Gantt Chart Component</div>
+        <div>
+            <div>Gantt Chart Component</div>
+        </div>
     );
 });
 
