@@ -7,6 +7,7 @@ import { Xrm } from '../xrm';
 import { generate } from '@ant-design/colors';
 import { IInputs } from '../generated/ManifestTypes';
 import { GanttChartComponent, GanttChartComponentProps } from './GanttChartComponent';
+import { isMainThread } from 'worker_threads';
 
 type EntityRecord = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 
@@ -25,21 +26,40 @@ interface ColorTheme {
     progressSelectedColor: string;
 }
 
+interface StateData {
+    tasks: Task[];
+    projectsExpanderState: Record<string, boolean>;
+    viewMode?: ViewMode;
+    localeCode: string;
+    startFieldName: string;
+    endFieldName: string;
+    progressFieldName: string;
+    recordDisplayName: string;
+    startDisplayName: string;
+    endDisplayName: string;
+    progressDisplayName: string;
+    ganttHeight?: number;
+    isProgressing: boolean;
+}
+
 export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JSX.Element => {
     // State
-    const [cachedProjectExpanderState, setProjectExpanderState] = React.useState<Record<string, boolean>>({});
-    const [cachedGanttChart, setCachedGanttChart] = React.useState<JSX.Element | null>(null);
-    //
-    const tasks: Task[] = [];
+    const [stateData, setStateData] = React.useState<StateData>();
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+    // Non-persistent storage.
     const taskTypeMap: Record<number, TaskType> = { 1: "task", 2: "milestone", 3: "project" };
     const defaultTaskType: TaskType = "task";
     const context = props.getContext();
     const entityDataset = context.parameters.entityDataSet;
-    let currentViewMode = props.viewMode;
 
-    const generateTasksAsync = async (items: unknown[]) => {
+    const generateTasksAsync = async (
+        items: unknown[],
+        getExpanderState: () => Record<string, boolean>,
+        saveExpanderState: (expanderState: Record<string, boolean>) => void): Promise<Task[]> => {
         const entityTypesAndColors: ColorTheme[] = [];
-        const projectsExpanderState: Record<string, boolean> = { ...cachedProjectExpanderState };
+        const projectsExpanderState: Record<string, boolean> = { ...getExpanderState() };
+        const tasks: Task[] = [];
         // Iterate the records (entities) in the dataset.
         for (const item of items) {
             const record = (item as Record<string, unknown>).raw as EntityRecord;
@@ -115,7 +135,8 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 );
             }
         }
-        setProjectExpanderState(projectsExpanderState);
+        saveExpanderState(projectsExpanderState);
+        return tasks;
     };
 
     const getTaskType = (taskTypeOption: number | undefined): TaskType => {
@@ -167,7 +188,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         };
     }
 
-    const getLocalCodeAsync = async () => {
+    const getLocaleCodeAsync = async () => {
         try {
             const languages = await context.webAPI.retrieveMultipleRecords(
                 "languagelocale",
@@ -185,116 +206,142 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
     };
 
     const handleViewModeChange = (viewMode: ViewMode) => {
-        currentViewMode = viewMode;
+        //currentViewMode = viewMode;
     }
 
     const handleExpanderStateChange = (itemId: string, expanderState: boolean) => {
-        cachedProjectExpanderState[itemId] = expanderState;
+        //cachedProjectExpanderState[itemId] = expanderState;
         entityDataset.refresh();
     }
 
     React.useEffect(() => {
-        if (entityDataset.loading) { return; }
+        // Nothing to do if the dataset hasn't loaded.
+        if (entityDataset.loading) return;
+        // Avoid state updates if unmounted
+        let isMounted = true;
+
         const fetchTasks = async () => {
-            // Get the columns
-            const columns = entityDataset.columns.sort((column1, column2) => column1.order - column2.order).map((column) => {
-                return {
-                    name: column.displayName,
-                    fieldName: column.name,
-                    minWidth: column.visualSizeFactor,
-                    key: column.name
-                }
-            });
-            const nameField = columns.find((c) => c.name === fieldNames.title)!;
-            const startField = columns.find((c) => c.name === fieldNames.startTime)!;
-            const endField = columns.find((c) => c.name === fieldNames.endTime)!;
-            const progressField = columns.find((c) => c.name === fieldNames.progress);
+            setLoading(true);
+            setError(null);
+            try {
+                // Initialize state bag.
+                const stateBag: StateData = {
+                    tasks: [],
+                    projectsExpanderState: {},
+                    viewMode: props.viewMode,
+                    localeCode: "en",
+                    startFieldName: "",
+                    endFieldName: "",
+                    progressFieldName: "",
+                    recordDisplayName: "",
+                    startDisplayName: "",
+                    endDisplayName: "",
+                    progressDisplayName: "",
+                    ganttHeight: undefined,
+                    isProgressing: false,
+                    ...(stateData || {}),
+                };
 
-            // Get the items from the dataset.
-            const myItems = entityDataset.sortedRecordIds.map((id) => {
-                const entity = entityDataset.records[id];
-                const attributes = entityDataset.columns.map((column) => {
-                    return { [column.name]: entity.getFormattedValue(column.name) }
-
+                // Get the columns
+                const columns = entityDataset.columns.sort((column1, column2) => column1.order - column2.order).map((column) => {
+                    return {
+                        name: column.displayName,
+                        fieldName: column.name,
+                        minWidth: column.visualSizeFactor,
+                        key: column.name
+                    }
                 });
-                return Object.assign({
-                    key: entity.getRecordId(),
-                    parentId: (entity.getValue("parentRecord") as ComponentFramework.EntityReference | undefined)?.id.guid,
-                    raw: entity,
-                }, ...attributes);
-            }).sort((a, b) => a.parentId < b.parentId ? -1 : a.parentId < b.parentId ? 1 : 0);
-            // Generate the tasks from the items.
-            await generateTasksAsync(myItems);
-            // Get the locale code.
-            const localeCode = await getLocalCodeAsync();
-            const includeTime = context.parameters.displayDateFormat.raw === "datetime";
-            const startFieldName = startField.name;
-            const endFieldName = endField.name;
-            const progressFieldName = progressField ? progressField.name : "";
-            const isProgressing = !!progressField;
-            // Header display names.
-            const listCellWidth = (context.parameters.listCellWidth.raw ? `${context.parameters.listCellWidth.raw}px` : "");
-            const recordDisplayName = context.parameters.customHeaderDisplayName.raw || nameField.name;
-            const startDisplayName = context.parameters.customHeaderStartName.raw || startField.name;
-            const endDisplayName = context.parameters.customHeaderEndName.raw || endField.name;
-            const progressDisplayName = context.parameters.customHeaderProgressName.raw || (progressField ? progressField.name : "");
-            // Height setup.
-            const rowHeight = context.parameters.rowHeight.raw ? context.parameters.rowHeight.raw : 50;
-            const headerHeight = context.parameters.headerHeight.raw ? context.parameters.headerHeight.raw : 50;
-            let ganttHeight: number | undefined;
-            if (context.mode.allocatedHeight !== -1) {
-                ganttHeight = context.mode.allocatedHeight - 15;
-            } else if (context.parameters.isSubgrid.raw === "no") {
-                ganttHeight = props.container.offsetHeight - 100;
+                const nameField = columns.find((c) => c.name === fieldNames.title)!;
+                const startField = columns.find((c) => c.name === fieldNames.startTime)!;
+                const endField = columns.find((c) => c.name === fieldNames.endTime)!;
+                const progressField = columns.find((c) => c.name === fieldNames.progress);
+
+                // Get the items from the dataset.
+                const myItems = entityDataset.sortedRecordIds.map((id) => {
+                    const entity = entityDataset.records[id];
+                    const attributes = entityDataset.columns.map((column) => {
+                        return { [column.name]: entity.getFormattedValue(column.name) }
+
+                    });
+                    return Object.assign({
+                        key: entity.getRecordId(),
+                        parentId: (entity.getValue("parentRecord") as ComponentFramework.EntityReference | undefined)?.id.guid,
+                        raw: entity,
+                    }, ...attributes);
+                }).sort((a, b) => a.parentId < b.parentId ? -1 : a.parentId < b.parentId ? 1 : 0);
+
+                // Generate the tasks from the items.
+                stateBag.tasks = await generateTasksAsync(myItems, () => { return stateBag.projectsExpanderState; }, (expanderState) => { stateBag.projectsExpanderState = expanderState });
+
+                // Get the locale code.
+                stateBag.localeCode = await getLocaleCodeAsync();
+                // Field names.
+                stateBag.startFieldName = startField.name;
+                stateBag.endFieldName = endField.name;
+                stateBag.progressFieldName = progressField ? progressField.name : "";
+                stateBag.isProgressing = !!progressField;
+                // Header Display names.
+                stateBag.recordDisplayName = context.parameters.customHeaderDisplayName.raw || nameField.name;
+                stateBag.startDisplayName = context.parameters.customHeaderStartName.raw || startField.name;
+                stateBag.endDisplayName = context.parameters.customHeaderEndName.raw || endField.name;
+                stateBag.progressDisplayName = context.parameters.customHeaderProgressName.raw || (progressField ? progressField.name : "");
+                // Height of chart.
+                if (context.mode.allocatedHeight !== -1) {
+                    stateBag.ganttHeight = context.mode.allocatedHeight - 15;
+                } else if (context.parameters.isSubgrid.raw === "no") {
+                    stateBag.ganttHeight = props.container.offsetHeight - 100;
+                }
+
+                // Update the state data.
+                if (isMounted) setStateData(stateBag);
+
+            } catch (e) {
+                if (isMounted) setError("Failed to load Gantt chart data");
+            } finally {
+                if (isMounted) setLoading(false);
             }
-            // Width setup
-            const columnWidthQuarter = context.parameters.columnWidthQuarter.raw || 0;
-            const columnWidthHalf = context.parameters.columnWidthHalf.raw || 0;
-            const columnWidthDay = context.parameters.columnWidthDay.raw || 0;
-            const columnWidthWeek = context.parameters.columnWidthWeek.raw || 0;
-            const columnWidthMonth = context.parameters.columnWidthMonth.raw || 0;
-            //
-            const fontSize = context.parameters.fontSize.raw || "14px";
-            // Create the Gantt Chart component.
-            const chart = React.createElement(GanttChartComponent, {
-                context,
-                tasks,
-                ganttHeight,
-                recordDisplayName,
-                startDisplayName,
-                endDisplayName,
-                progressDisplayName,
-                startFieldName: startField.name,
-                endFieldName: endField.name,
-                progressFieldName: progressFieldName,
-                listCellWidth: listCellWidth,
-                timeStep: context.parameters.timeStep.raw || 15,
-                rowHeight: rowHeight,
-                headerHeight: headerHeight,
-                isProgressing: !!progressField,
-                viewMode: currentViewMode,
-                includeTime: includeTime,
-                locale: localeCode,
-                rtl: context.userSettings.isRTL,
-                crmUserTimeOffset: props.userTimeOffset,
-                fontSize,
-                columnWidthQuarter,
-                columnWidthHalf,
-                columnWidthDay,
-                columnWidthWeek,
-                columnWidthMonth,
-                onViewChange: handleViewModeChange,
-                onExpanderStateChange: handleExpanderStateChange,
-            });
-            setCachedGanttChart(chart);
         }
         fetchTasks();
+        return () => { isMounted = false; };
     }, [entityDataset.loading]);
     return (
         <div>
             {/* <div>Gantt Chart Component</div>
             <div className='myTestClass'>{JSON.stringify(tasks)}</div> */}
-            <div>{cachedGanttChart}</div>
+            <div>
+                {loading && <div className="loading-indicator">Loading Gantt Chart...</div>}
+                {error && <div className="error-message">{error}</div>}
+                {/* {!loading && stateData && JSON.stringify(stateData.tasks)} */}
+                {!loading && !error && stateData && <GanttChartComponent
+                    context={context}
+                    tasks={stateData.tasks}
+                    locale={stateData.localeCode}
+                    recordDisplayName={stateData.recordDisplayName}
+                    startDisplayName={stateData.startDisplayName}
+                    endDisplayName={stateData.endDisplayName}
+                    progressDisplayName={stateData.progressDisplayName}
+                    startFieldName={stateData.startFieldName}
+                    endFieldName={stateData.endFieldName}
+                    progressFieldName={stateData.progressFieldName}
+                    isProgressing={stateData.isProgressing}
+                    viewMode={stateData.viewMode}
+                    rtl={context.userSettings.isRTL}
+                    timeStep={context.parameters.timeStep.raw || 15}
+                    includeTime={context.parameters.displayDateFormat.raw === "datetime"}
+                    crmUserTimeOffset={props.userTimeOffset}
+                    ganttHeight={stateData.ganttHeight}
+                    fontSize={context.parameters.fontSize.raw || "14px"}
+                    rowHeight={context.parameters.rowHeight.raw ? context.parameters.rowHeight.raw : 50}
+                    headerHeight={context.parameters.headerHeight.raw ? context.parameters.headerHeight.raw : 50}
+                    listCellWidth={(context.parameters.listCellWidth.raw ? `${context.parameters.listCellWidth.raw}px` : "")}
+                    columnWidthQuarter={context.parameters.columnWidthQuarter.raw || 0}
+                    columnWidthHalf={context.parameters.columnWidthHalf.raw || 0}
+                    columnWidthDay={context.parameters.columnWidthDay.raw || 0}
+                    columnWidthWeek={context.parameters.columnWidthWeek.raw || 0}
+                    columnWidthMonth={context.parameters.columnWidthMonth.raw || 0}
+                    onViewChange={handleViewModeChange}
+                    onExpanderStateChange={handleExpanderStateChange} />}
+            </div>
         </div>
     );
 });
