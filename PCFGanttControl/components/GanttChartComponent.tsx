@@ -12,6 +12,7 @@ import { ViewSwitcher } from "./ViewSwitcher";
 import { IInputs } from "../generated/ManifestTypes";
 import { createTooltip } from "./GanttChartTooltip";
 import { createTaskListLocal } from "./TaskListTable";
+import "gantt-task-react/dist/index.css";
 
 export type GanttChartComponentProps = {
     context: ComponentFramework.Context<IInputs>;

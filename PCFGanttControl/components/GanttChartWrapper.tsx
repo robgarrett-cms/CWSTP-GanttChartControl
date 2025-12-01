@@ -6,8 +6,7 @@ import { fieldNames } from '../constants';
 import { Xrm } from '../xrm';
 import { generate } from '@ant-design/colors';
 import { IInputs } from '../generated/ManifestTypes';
-import { GanttChartComponent, GanttChartComponentProps } from './GanttChartComponent';
-import { isMainThread } from 'worker_threads';
+import { GanttChartComponent } from './GanttChartComponent';
 
 type EntityRecord = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 
@@ -189,29 +188,37 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
     }
 
     const getLocaleCodeAsync = async () => {
-        try {
-            const languages = await context.webAPI.retrieveMultipleRecords(
-                "languagelocale",
-                `?$select=code&$filter=localeid eq ${context.userSettings.languageId}`
-            );
-            if (languages.entities.length > 0) {
-                const code = languages.entities[0].code;
-                return code;
-            }
-        } catch (e) {
-            console.error(e);
-        }
+        // try {
+        //     const languages = await context.webAPI.retrieveMultipleRecords(
+        //         "languagelocale",
+        //         `?$select=code&$filter=localeid eq ${context.userSettings.languageId}`
+        //     );
+        //     if (languages.entities.length > 0) {
+        //         const code = languages.entities[0].code;
+        //         return code;
+        //     }
+        // } catch (e) {
+        //     console.error(e);
+        // }
 
         return "en"; // English
     };
 
     const handleViewModeChange = (viewMode: ViewMode) => {
-        //currentViewMode = viewMode;
+        const stateBag = stateData;
+        if (stateBag) {
+            stateBag.viewMode = viewMode;
+            setStateData(stateBag);
+        }
     }
 
     const handleExpanderStateChange = (itemId: string, expanderState: boolean) => {
-        //cachedProjectExpanderState[itemId] = expanderState;
-        entityDataset.refresh();
+        const stateBag = stateData;
+        if (stateBag) {
+            stateBag.projectsExpanderState[itemId] = expanderState;
+            setStateData(stateBag);
+            entityDataset.refresh();
+        }
     }
 
     React.useEffect(() => {
@@ -305,7 +312,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         return () => { isMounted = false; };
     }, [entityDataset.loading]);
     return (
-        <div>
+        <div className='myTestClass'>
             {/* <div>Gantt Chart Component</div>
             <div className='myTestClass'>{JSON.stringify(tasks)}</div> */}
             <div>
