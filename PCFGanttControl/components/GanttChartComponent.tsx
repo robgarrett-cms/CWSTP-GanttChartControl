@@ -46,19 +46,20 @@ export const GanttChartComponent: React.FunctionComponent<GanttChartComponentPro
     const { context } = props;
     // Events
     const handleDateChange = async (task: Task) => {
-        const recordRef = context.parameters.entityDataSet.records[task.id].getNamedReference();
-        // const entityName = recordRef.etn || ((recordRef as any).logicalName as string);
-        const entityName = recordRef.etn || "";
+        const record = context.parameters.entityDataSet.records[task.id];
+        if (!record) { return false; }
         let resultState = true;
-        try {
-            await context.webAPI.updateRecord(entityName, task.id, {
-                [props.endFieldName]: new Date(
-                    task.end.getTime() - props.crmUserTimeOffset * 60000
-                ),
-                [props.startFieldName]: new Date(
-                    task.start.getTime() - props.crmUserTimeOffset * 60000
-                ),
-            });
+        const newStartTime = new Date(task.start.getTime() - props.crmUserTimeOffset * 60000);
+        const newEndTime = new Date(task.end.getTime() - props.crmUserTimeOffset * 60000);
+        try { 
+            const startTimeColumn = context.parameters.entityDataSet.columns.find((c) => c.alias == props.startFieldName);
+            const endTimeColumn = context.parameters.entityDataSet.columns.find((c) => c.alias == props.endFieldName);
+            // @ts-expect-error("setValue may not exist in current version of ComponentFrameword.d.ts")
+            record.setValue(startTimeColumn.name, newStartTime);
+            // @ts-expect-error("setValue may not exist in current version of ComponentFrameword.d.ts")
+            record.setValue(endTimeColumn.name, newEndTime);
+            // @ts-expect-error("save may not exist in current version of ComponentFrameword.d.ts")
+            await record.save(record);  
         } catch (e) {
             console.error(e);
             resultState = false;
@@ -68,14 +69,15 @@ export const GanttChartComponent: React.FunctionComponent<GanttChartComponentPro
     };
 
     const handleProgressChange = async (task: Task) => {
-        const recordRef = context.parameters.entityDataSet.records[task.id].getNamedReference();
-        // const entityName = recordRef.etn || ((recordRef as any).logicalName as string);
-        const entityName = recordRef.etn || "";
+        const record = context.parameters.entityDataSet.records[task.id];
+        if (!record) { return false; }
         let resultState = true;
         try {
-            await context.webAPI.updateRecord(entityName, task.id, {
-                [props.progressFieldName]: task.progress,
-            });
+            const progressColumn = context.parameters.entityDataSet.columns.find((c) => c.alias == props.progressFieldName);
+            // @ts-expect-error("setValue may not exist in current version of ComponentFrameword.d.ts")
+            record.setValue(progressColumn.name, task.progress);
+            // @ts-expect-error("save may not exist in current version of ComponentFrameword.d.ts")
+            await record.save(record);  
         } catch (e) {
             console.error(e);
             resultState = false;

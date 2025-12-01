@@ -6,7 +6,7 @@ import { fieldNames } from '../constants';
 import { Xrm } from '../xrm';
 import { generate } from '@ant-design/colors';
 import { IInputs } from '../generated/ManifestTypes';
-import { GanttChartComponent } from './GanttChartComponent';
+import { GanttChartComponent, GanttChartComponentProps } from './GanttChartComponent';
 
 type EntityRecord = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 
@@ -27,19 +27,19 @@ interface ColorTheme {
 
 export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JSX.Element => {
     // State
-    const [cachedTasks, setCachedTasks] = React.useState<Task[]>([]);
-    const [cachedProjects, setCachedProjects] = React.useState<Record<string, boolean>>({});
-    const [ganttChartComponent, setGanttChartComponent] = React.useState<JSX.Element | null>(null);
+    const [cachedProjectExpanderState, setProjectExpanderState] = React.useState<Record<string, boolean>>({});
+    const [cachedGanttChart, setCachedGanttChart] = React.useState<JSX.Element | null>(null);
     //
+    const tasks: Task[] = [];
     const taskTypeMap: Record<number, TaskType> = { 1: "task", 2: "milestone", 3: "project" };
     const defaultTaskType: TaskType = "task";
     const context = props.getContext();
     const entityDataset = context.parameters.entityDataSet;
+    let currentViewMode = props.viewMode;
 
-    const generateTasksAsync = async (items: unknown[]): Promise<Task[]> => {
+    const generateTasksAsync = async (items: unknown[]) => {
         const entityTypesAndColors: ColorTheme[] = [];
-        const tasks: Task[] = [];
-        const projects: Record<string, boolean> = { ...cachedProjects };
+        const projectsExpanderState: Record<string, boolean> = { ...cachedProjectExpanderState };
         // Iterate the records (entities) in the dataset.
         for (const item of items) {
             const record = (item as Record<string, unknown>).raw as EntityRecord;
@@ -83,14 +83,14 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 };
                 if (taskType === "project") {
                     // Look for the project in the expander state map
-                    const expanderState = projects[taskId];
+                    const expanderState = projectsExpanderState[taskId];
                     if (!expanderState) {
                         // Didn't find the project, set default to expanded
-                        projects[taskId] = false;
+                        projectsExpanderState[taskId] = false;
                         task.hideChildren = false;
                     } else {
                         // Set the project expand/collapse state from the map
-                        task.hideChildren = projects[taskId];
+                        task.hideChildren = projectsExpanderState[taskId];
                     }
                 }
                 if (parentRecord) {
@@ -115,8 +115,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 );
             }
         }
-        setCachedProjects(projects);
-        return tasks;
+        setProjectExpanderState(projectsExpanderState);
     };
 
     const getTaskType = (taskTypeOption: number | undefined): TaskType => {
@@ -185,11 +184,14 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         return "en"; // English
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    const handleViewModeChange = (viewMode: ViewMode) => {}
+    const handleViewModeChange = (viewMode: ViewMode) => {
+        currentViewMode = viewMode;
+    }
 
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    const handleExpanderStateChange = (itemId: string, expanderState: boolean) => {}
+    const handleExpanderStateChange = (itemId: string, expanderState: boolean) => {
+        cachedProjectExpanderState[itemId] = expanderState;
+        entityDataset.refresh();
+    }
 
     React.useEffect(() => {
         if (entityDataset.loading) { return; }
@@ -222,16 +224,19 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 }, ...attributes);
             }).sort((a, b) => a.parentId < b.parentId ? -1 : a.parentId < b.parentId ? 1 : 0);
             // Generate the tasks from the items.
-            const tasks = await generateTasksAsync(myItems);
-            setCachedTasks(tasks);
+            await generateTasksAsync(myItems);
             // Get the locale code.
             const localeCode = await getLocalCodeAsync();
+            const includeTime = context.parameters.displayDateFormat.raw === "datetime";
+            const startFieldName = startField.name;
+            const endFieldName = endField.name;
+            const progressFieldName = progressField ? progressField.name : "";
+            const isProgressing = !!progressField;
             // Header display names.
-            const listCellWidth = context.parameters.listCellWidth.raw ? `${context.parameters.listCellWidth.raw}px` : "";
+            const listCellWidth = (context.parameters.listCellWidth.raw ? `${context.parameters.listCellWidth.raw}px` : "");
             const recordDisplayName = context.parameters.customHeaderDisplayName.raw || nameField.name;
             const startDisplayName = context.parameters.customHeaderStartName.raw || startField.name;
             const endDisplayName = context.parameters.customHeaderEndName.raw || endField.name;
-            const progressFieldName = progressField ? progressField.name : "";
             const progressDisplayName = context.parameters.customHeaderProgressName.raw || (progressField ? progressField.name : "");
             // Height setup.
             const rowHeight = context.parameters.rowHeight.raw ? context.parameters.rowHeight.raw : 50;
@@ -249,10 +254,9 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
             const columnWidthWeek = context.parameters.columnWidthWeek.raw || 0;
             const columnWidthMonth = context.parameters.columnWidthMonth.raw || 0;
             //
-            const includeTime = context.parameters.displayDateFormat.raw === "datetime";
             const fontSize = context.parameters.fontSize.raw || "14px";
             // Create the Gantt Chart component.
-            const ganttChart = React.createElement(GanttChartComponent, {
+            const chart = React.createElement(GanttChartComponent, {
                 context,
                 tasks,
                 ganttHeight,
@@ -268,7 +272,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 rowHeight: rowHeight,
                 headerHeight: headerHeight,
                 isProgressing: !!progressField,
-                viewMode: props.viewMode,
+                viewMode: currentViewMode,
                 includeTime: includeTime,
                 locale: localeCode,
                 rtl: context.userSettings.isRTL,
@@ -282,15 +286,15 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 onViewChange: handleViewModeChange,
                 onExpanderStateChange: handleExpanderStateChange,
             });
-            setGanttChartComponent(ganttChart);
+            setCachedGanttChart(chart);
         }
         fetchTasks();
     }, [entityDataset.loading]);
     return (
         <div>
-            <div>Gantt Chart Component</div>
-            <div className='myTestClass'>{JSON.stringify(cachedTasks)}</div>
-            <div>{ganttChartComponent}</div>
+            {/* <div>Gantt Chart Component</div>
+            <div className='myTestClass'>{JSON.stringify(tasks)}</div> */}
+            <div>{cachedGanttChart}</div>
         </div>
     );
 });
