@@ -23,8 +23,20 @@ app.use(cors({
 
 // Middleware to log all requests
 app.use((req, res, next) => {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Surrogate-Control': 'no-store',
+    'X-Requestly-Redirect': 'true'
+  });
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} Origin=${req.headers.origin}`);
   next();
+});
+
+app.get('/bundle.js', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'out/controls/PCFGanttControl/bundle.js'));
 });
 
 app.use('/', express.static(path.join(__dirname, 'out/controls/PCFGanttControl')));
