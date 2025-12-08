@@ -7,6 +7,7 @@ import { Xrm } from '../xrm';
 import { generate } from '@ant-design/colors';
 import { IInputs } from '../generated/ManifestTypes';
 import { GanttChartComponent } from './GanttChartComponent';
+import { taskHelper } from '../taskHelper';
 
 type EntityRecord = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 
@@ -146,61 +147,6 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         return taskType;
     }
 
-    const orderWithDependencies = (tasks: Task[]): Task[] => {
-        // Separate projects and children
-        const projects = tasks.filter(t => !t.project);
-        const children = tasks.filter(t => !!t.project);
-
-        // Map projectId -> children
-        const childrenByProject: Record<string, Task[]> = {};
-        for (const child of children) {
-            if (!childrenByProject[child.project!]) {
-                childrenByProject[child.project!] = [];
-            }
-            childrenByProject[child.project!].push(child);
-        }
-
-        // Helper: topological sort for tasks within a project
-        const topoSort = (projectTasks: Task[]): Task[] => {
-            const result: Task[] = [];
-            const visited = new Set<string>();
-            const visiting = new Set<string>();
-
-            const visit = (task: Task) => {
-                if (visited.has(task.id)) return;
-                if (visiting.has(task.id)) {
-                    throw new Error(`Cycle detected involving task ${task.id}`);
-                }
-                visiting.add(task.id);
-
-                // Visit dependencies first
-                (task.dependencies || []).forEach(depId => {
-                    const depTask = projectTasks.find(t => t.id === depId);
-                    if (depTask) visit(depTask);
-                });
-
-                visiting.delete(task.id);
-                visited.add(task.id);
-                result.push(task);
-            }
-
-            for (const t of projectTasks) visit(t);
-            return result;
-        }
-
-        // Sort
-        const ordered: Task[] = [];
-        for (const project of projects) {
-            ordered.push(project);
-            const projectChildren = childrenByProject[project.id] || [];
-            const sortedChildren = topoSort(projectChildren);
-            for (const child of sortedChildren) {
-                ordered.push(child);
-            }
-        }
-        return ordered;
-    }
-
     const generateColorThemeAsync = async (
         entName: string,
         colorText: string,
@@ -335,10 +281,10 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 }).sort((a, b) => a.parentId < b.parentId ? -1 : a.parentId < b.parentId ? 1 : 0);
 
                 // Generate the tasks from the items.
-                stateBag.tasks = orderWithDependencies(await generateTasksAsync(myItems, 
+                const unorderedTasks = await generateTasksAsync(myItems, 
                     () => { return stateBag.projectsExpanderState; }, 
-                    (expanderState) => { stateBag.projectsExpanderState = expanderState }));
-
+                    (expanderState) => { stateBag.projectsExpanderState = expanderState });
+                stateBag.tasks = taskHelper.reorderTasks(unorderedTasks);
                 // Get the locale code.
                 stateBag.localeCode = await getLocaleCodeAsync();
                 // Field names.
