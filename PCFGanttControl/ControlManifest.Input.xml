@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="CMS.CWSTP" constructor="PCFGanttControl" version="0.3.2" display-name-key="PCFGanttControl" description-key="PCFGanttControl description" control-type="virtual">
+  <control namespace="CMS.CWSTP" constructor="PCFGanttControl" version="0.3.3" display-name-key="PCFGanttControl" description-key="PCFGanttControl description" control-type="virtual">
     <external-service-usage enabled="false">
     </external-service-usage>
     <type-group name="Date.All">
@@ -75,7 +75,6 @@
 
     <resources>
       <code path="index.ts" order="1"/>
-      <css path="./css/PCFGanttChart.css" order="1" />
       <resx path="strings/PCFGanttChart.1033.resx" version="1.0.0" />
       <platform-library name="React" version="16.14.0" />
     </resources>

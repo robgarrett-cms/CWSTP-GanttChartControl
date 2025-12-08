@@ -8,6 +8,7 @@ import { generate } from '@ant-design/colors';
 import { IInputs } from '../generated/ManifestTypes';
 import { GanttChartComponent } from './GanttChartComponent';
 import { taskHelper } from '../taskHelper';
+import "../css/PCFGanttChart.css";
 
 type EntityRecord = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 
@@ -321,8 +322,8 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         if (error) {
             return <div className="error-message">{error}</div>
         } else if (!loading && stateData) {
-            return <div className='myTestClass'>
-                <div>Gantt Chart Component v1.3</div>
+            return <div className='pcf-container'>
+                <div>Gantt Chart Component v1.4</div>
                 {/* <div>{JSON.stringify(stateData.tasks)}</div> */}
                 <GanttChartComponent
                     context={context}
