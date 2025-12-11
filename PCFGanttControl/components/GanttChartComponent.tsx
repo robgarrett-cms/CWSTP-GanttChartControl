@@ -13,6 +13,7 @@ import { IInputs } from "../generated/ManifestTypes";
 import { createTooltip } from "./GanttChartTooltip";
 import { createTaskListLocal } from "./TaskListTable";
 import "gantt-task-react/dist/index.css";
+import { taskHelper } from "../taskHelper";
 
 export type GanttChartComponentProps = {
     context: ComponentFramework.Context<IInputs>;
@@ -86,6 +87,20 @@ export const GanttChartComponent: React.FunctionComponent<GanttChartComponentPro
         context.parameters.entityDataSet.refresh();
         return resultState;
     };
+
+    const handleDelete = async (task: Task) : Promise<boolean> => {
+        let resultState = true;
+        // Make sure task isn't a dependent first.
+        if (taskHelper.isDependent(task, props.tasks)) return false;
+        // @ts-expect-error("delete may not exist in current version of ComponentFrameword.d.ts")
+        context.parameters.entityDataSet.delete([task.id])
+            .then(context.parameters.entityDataSet.refresh())
+            .catch((e: never) => {
+                console.error(e); 
+                resultState = false;
+            });
+        return resultState;
+    }
 
     const handleOpenRecord = async (task: Task) => {
         const recordRef = context.parameters.entityDataSet.records[task.id].getNamedReference();
@@ -175,6 +190,7 @@ export const GanttChartComponent: React.FunctionComponent<GanttChartComponentPro
                 onDateChange={handleDateChange}
                 onSelect={handleSelect}
                 onExpanderClick={handleExpanderClick}
+                onDelete={handleDelete}
             />
         </div>
     );

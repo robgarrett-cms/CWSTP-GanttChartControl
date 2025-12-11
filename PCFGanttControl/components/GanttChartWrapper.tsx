@@ -40,6 +40,7 @@ interface StateData {
     endDisplayName: string;
     progressDisplayName: string;
     ganttHeight?: number;
+    ganttWidth?: number;
     isProgressing: boolean;
 }
 
@@ -249,6 +250,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                     endDisplayName: "",
                     progressDisplayName: "",
                     ganttHeight: undefined,
+                    ganttWidth: undefined,
                     isProgressing: false,
                     ...(stateData || {}),
                 };
@@ -282,10 +284,10 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 }).sort((a, b) => a.parentId < b.parentId ? -1 : a.parentId < b.parentId ? 1 : 0);
 
                 // Generate the tasks from the items.
-                const unorderedTasks = await generateTasksAsync(myItems, 
-                    () => { return stateBag.projectsExpanderState; }, 
+                const unorderedTasks = await generateTasksAsync(myItems,
+                    () => { return stateBag.projectsExpanderState; },
                     (expanderState) => { stateBag.projectsExpanderState = expanderState });
-                stateBag.tasks = taskHelper.reorderTasks(unorderedTasks);
+                stateBag.tasks = unorderedTasks; //taskHelper.reorderTasks(unorderedTasks);
                 // Get the locale code.
                 stateBag.localeCode = await getLocaleCodeAsync();
                 // Field names.
@@ -303,6 +305,10 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                     stateBag.ganttHeight = context.mode.allocatedHeight - 15;
                 } else if (context.parameters.isSubgrid.raw === "no") {
                     stateBag.ganttHeight = props.container.offsetHeight - 100;
+                }
+                // Width of the container for the chart.
+                if (context.mode.allocatedWidth !== -1) {
+                    stateBag.ganttWidth = context.mode.allocatedWidth - 15;
                 }
 
                 // Update the state data.
@@ -322,7 +328,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         if (error) {
             return <div className="error-message">{error}</div>
         } else if (!loading && stateData) {
-            return <div className='pcf-container'>
+            return <div className='pcf-container' style={stateData.ganttWidth ? { width: `${stateData.ganttWidth}px` } : {}}>
                 <div>Gantt Chart Component v1.4</div>
                 {/* <div>{JSON.stringify(stateData.tasks)}</div> */}
                 <GanttChartComponent

@@ -35,7 +35,7 @@ export class PCFGanttControl implements ComponentFramework.ReactControl<IInputs,
         context.parameters.entityDataSet.paging.setPageSize(5000);
         context.parameters.entityDataSet.refresh();
         this._container = container;
-        this._viewMode = context.parameters.viewMode.raw as ViewMode;
+        this._viewMode = ViewMode.Month; //context.parameters.viewMode.raw as ViewMode;
         this._crmUserTimeOffset = context.userSettings.getTimeZoneOffsetMinutes(new Date()) + new Date().getTimezoneOffset();
     }
 

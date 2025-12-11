@@ -2,6 +2,12 @@ import { Task } from "gantt-task-react";
 
 export class taskHelper {
 
+    static isDependent = (task: Task, tasks: Task[]): boolean => {
+        if (task.project) return true;
+        // Iterate the tasks and find those where task is a dependent.
+        return tasks.some(t => t.dependencies?.includes(task.id));
+    }
+
     static reorderTasks = (tasks: Task[]): Task[] => {
         const taskMap = new Map<string, Task>();
         const projectCache = new Map<string, string>(); // Cache for resolved project IDs
