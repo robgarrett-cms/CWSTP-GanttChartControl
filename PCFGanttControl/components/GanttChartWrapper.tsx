@@ -46,6 +46,7 @@ interface StateData {
 
 export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JSX.Element => {
     // State
+    const [orphanedTasksProjectId, setOrphanedTasksProjectId] = React.useState<string>(crypto.randomUUID());
     const [stateData, setStateData] = React.useState<StateData>();
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
@@ -62,6 +63,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         const entityTypesAndColors: ColorTheme[] = [];
         const projectsExpanderState: Record<string, boolean> = { ...getExpanderState() };
         const tasks: Task[] = [];
+        const orphans: Task[] = [];
         // Iterate the records (entities) in the dataset.
         for (const item of items) {
             const record = (item as Record<string, unknown>).raw as EntityRecord;
@@ -129,6 +131,9 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                             task.dependencies = [parentRecordId];
                         }
                     }
+                } else if (taskType === "task") {
+                    // We have a standalone task with no dependency.
+                    orphans.push(task);
                 }
                 tasks.push(task);
             } catch (e) {
@@ -136,6 +141,44 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                     `Create task error. Record id: ${record.getRecordId()}, name: ${name}, start time: ${start}, end time: ${end}, progress: ${progress}. Error text ${e}`
                 );
             }
+        }
+        // Create a dummy project to add standalone tasks.
+        if (orphans.length > 0) {
+            const orphansAndDeps = tasks.filter(t =>
+                orphans.some(o => o.id === t.id) ||
+                ((orphanIds => {
+                    const dependsOnOrphan = (task: Task): boolean =>
+                        !!task.dependencies?.some(depId => orphanIds.has(depId) || (() => {
+                            const dep = tasks.find(x => x.id === depId);
+                            return dep ? dependsOnOrphan(dep) : false;
+                        })());
+                    return dependsOnOrphan(t);
+                })(new Set(orphans.map(o => o.id))))
+            );
+            const dummyProject: Task = {
+                id: orphanedTasksProjectId,
+                type: 'project' as TaskType,
+                name: '-- Standalone Tasks --',
+                start: new Date(Math.min(...orphansAndDeps.map(t => t.start.getTime()))),
+                end: new Date(Math.max(...orphansAndDeps.map(t => t.end.getTime()))),
+                progress: orphansAndDeps.length ? orphansAndDeps.reduce((sum, t) => sum + t.progress, 0) / orphansAndDeps.length : 0,
+                isDisabled: (context.parameters.displayMode.raw === "readonly"),
+            };
+            const entityLogicalName = entityDataset.getTargetEntityType() || "";
+            const entityColorTheme = entityTypesAndColors.find((e) => e.entityLogicalName === entityLogicalName);
+            if (entityColorTheme) { 
+                dummyProject.styles = {...entityColorTheme};
+            }
+            orphans.forEach(o => o.project = dummyProject.id);
+            const expanderState = projectsExpanderState[dummyProject.id];
+            if (!expanderState) {
+                projectsExpanderState[dummyProject.id] = false;
+                dummyProject.hideChildren = false;
+            } else {
+                // Set the project expand/collapse state from the map
+                dummyProject.hideChildren = projectsExpanderState[dummyProject.id];
+            }
+            tasks.push(dummyProject);
         }
         saveExpanderState(projectsExpanderState);
         return tasks;
@@ -287,7 +330,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 const unorderedTasks = await generateTasksAsync(myItems,
                     () => { return stateBag.projectsExpanderState; },
                     (expanderState) => { stateBag.projectsExpanderState = expanderState });
-                stateBag.tasks = unorderedTasks; //taskHelper.reorderTasks(unorderedTasks);
+                stateBag.tasks = taskHelper.reorderTasks(unorderedTasks);
                 // Get the locale code.
                 stateBag.localeCode = await getLocaleCodeAsync();
                 // Field names.
