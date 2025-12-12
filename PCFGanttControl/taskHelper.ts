@@ -46,8 +46,19 @@ export class taskHelper {
             });
         }
         // Sort children of each group.
-        const grouped = groupTasksByProject(tasks).sort((p1, p2) => p1.project.start.getTime() - p2.project.start.getTime());
+        const grouped = groupTasksByProject(tasks);
+        // Process rollup progress
+        grouped.forEach(g => { 
+            if (g.children.length > 0) {
+                g.project.progress = g.children.reduce((s, c) => s + c.progress, 0) / g.children.length;
+                g.project.start = new Date(Math.min(...g.children.map(t => t.start.getTime())));
+                g.project.end = new Date(Math.max(...g.children.map(t => t.end.getTime())));
+            } else {
+                g.project.progress = 0;
+            }
+        });
         // Flatten structure.
+        grouped.sort((p1, p2) => p1.project.start.getTime() - p2.project.start.getTime());
         grouped.forEach((g: ProjectGroup) => {
             sortedResults.push(g.project);
             sortedResults.push(...sortChildTasks(g.children));

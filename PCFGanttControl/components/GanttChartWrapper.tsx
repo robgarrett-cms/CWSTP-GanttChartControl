@@ -159,9 +159,9 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 id: orphanedTasksProjectId,
                 type: 'project' as TaskType,
                 name: '-- Standalone Tasks --',
-                start: new Date(Math.min(...orphansAndDeps.map(t => t.start.getTime()))),
-                end: new Date(Math.max(...orphansAndDeps.map(t => t.end.getTime()))),
-                progress: orphansAndDeps.length ? orphansAndDeps.reduce((sum, t) => sum + t.progress, 0) / orphansAndDeps.length : 0,
+                start: new Date(Math.min(...tasks.map(t => t.start.getTime()))),
+                end: new Date(Math.max(...tasks.map(t => t.end.getTime()))),
+                progress: 0,
                 isDisabled: (context.parameters.displayMode.raw === "readonly"),
             };
             const entityLogicalName = entityDataset.getTargetEntityType() || "";
@@ -365,14 +365,14 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         }
         fetchTasks();
         return () => { isMounted = false; };
-    }, [entityDataset.loading, entityDataset.sortedRecordIds]);
+    }, [entityDataset.loading, entityDataset.sortedRecordIds, context.mode.allocatedWidth, context.mode.allocatedHeight]);
 
     const render = () => {
         if (error) {
             return <div className="error-message">{error}</div>
         } else if (!loading && stateData) {
             return <div className='pcf-container' style={stateData.ganttWidth ? { width: `${stateData.ganttWidth}px` } : {}}>
-                <div>Gantt Chart Component v1.4</div>
+                {/* <div>Gantt Chart Component v1.4</div> */}
                 {/* <div>{JSON.stringify(stateData.tasks)}</div> */}
                 <GanttChartComponent
                     context={context}
