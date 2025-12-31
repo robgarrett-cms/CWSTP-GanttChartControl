@@ -166,8 +166,8 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
             };
             const entityLogicalName = entityDataset.getTargetEntityType() || "";
             const entityColorTheme = entityTypesAndColors.find((e) => e.entityLogicalName === entityLogicalName);
-            if (entityColorTheme) { 
-                dummyProject.styles = {...entityColorTheme};
+            if (entityColorTheme) {
+                dummyProject.styles = { ...entityColorTheme };
             }
             orphans.forEach(o => o.project = dummyProject.id);
             const expanderState = projectsExpanderState[dummyProject.id];
@@ -270,7 +270,10 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
     React.useEffect(() => {
         // Nothing to do if the dataset hasn't loaded.
         if (entityDataset.loading) return;
-        if (!entityDataset.sortedRecordIds || entityDataset.sortedRecordIds.length === 0) return;
+        if (!entityDataset.sortedRecordIds || entityDataset.sortedRecordIds.length === 0) {
+            setLoading(false)
+            return
+        };
 
         // Avoid state updates if unmounted
         let isMounted = true;
@@ -370,7 +373,9 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
     const render = () => {
         if (error) {
             return <div className="error-message">{error}</div>
-        } else if (!loading && stateData) {
+        } else if (loading) { 
+            return <div className="loading-indicator">Loading Gantt Chart...</div>
+        } else if (stateData) {
             return <div className='pcf-container' style={stateData.ganttWidth ? { width: `${stateData.ganttWidth}px` } : {}}>
                 {/* <div>Gantt Chart Component v1.4</div> */}
                 {/* <div>{JSON.stringify(stateData.tasks)}</div> */}
@@ -405,7 +410,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                     onExpanderStateChange={handleExpanderStateChange} />
             </div>
         } else {
-            return <div className="loading-indicator">Loading Gantt Chart...</div>
+            return <div>No Gantt Entries.</div>
         }
     }
 
