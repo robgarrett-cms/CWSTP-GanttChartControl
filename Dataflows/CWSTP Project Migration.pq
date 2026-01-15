@@ -38,7 +38,7 @@ let
         Table.Buffer(
             Table.SelectColumns(
                 Teams_Raw,
-                {"cr8b0_cwstp_teamid", "cr8b0_name"}
+                {"cr8b0_name"}
             )
         ),
 
@@ -152,8 +152,8 @@ let
         Table.ExpandRecordColumn(
             Table.ExpandListColumn(NormalizeTeam, "Team"),
             "Team",
-            {"Value","Id"},
-            {"Team.Value","Team.Id"}
+            {"Value"},
+            {"Team.Value"}
         ),
 
     CleanTeamValue =
@@ -175,20 +175,12 @@ let
             JoinKind.LeftOuter
         ),
 
-    ExpandTeams =
-        Table.ExpandTableColumn(
-            MergeTeams,
-            "TeamDV",
-            {"cr8b0_cwstp_teamid"},
-            {"TeamGUID"}
-        ),
-
     //
     // MERGE OWNER + STAKEHOLDER
     //
     MergeOwner =
         Table.NestedJoin(
-            ExpandTeams,
+            MergeTeams,
             {"OwnerEmail"},
             Users_Clean,
             {"internalemailaddress"},
@@ -222,14 +214,16 @@ let
             {"Stakeholder.systemuserid","Stakeholder.azureactivedirectoryobjectid","Stakeholder.email"}
         ),
 
+    Ren_Cols = Table.RenameColumns(ExpandStakeholderUser, {{"Team.Value", "TeamName"}}),
+
     //
     // REMOVE NOISE COLUMNS
     //
     Final =
         Table.RemoveColumns(
-            ExpandStakeholderUser,
+            Ren_Cols,
             {
-                "Team.Id","Dependent Tasks","Color Tag","Compliance Asset Id","Approval Creator",
+                "Dependent Tasks","Color Tag","Compliance Asset Id","Approval Creator",
                 "Approval status","Approvers","Responses","Version","Schedule Variance","Content Type",
                 "Created","Created By","Modified By","Attachments","Edit","Type","Item Child Count",
                 "Folder Child Count","Label setting","Retention label","Retention label Applied",
