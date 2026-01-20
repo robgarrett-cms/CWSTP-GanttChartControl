@@ -17,7 +17,7 @@ let
     //
     ProjectsBase =
         Table.SelectColumns(
-            Projects,
+            #"Projects Base",
             {"TeamName", "ID"}
         ),
 

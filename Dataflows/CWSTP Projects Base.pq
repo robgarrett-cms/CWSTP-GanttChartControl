@@ -214,21 +214,6 @@ let
             {"Stakeholder.systemuserid","Stakeholder.azureactivedirectoryobjectid","Stakeholder.email"}
         ),
 
-    Ren_Cols = Table.RenameColumns(ExpandStakeholderUser, {{"Team.Value", "TeamName"}}),
-
-    //
-    // REMOVE NOISE COLUMNS
-    //
-    Final =
-        Table.RemoveColumns(
-            Ren_Cols,
-            {
-                "Dependent Tasks","Color Tag","Compliance Asset Id","Approval Creator",
-                "Approval status","Approvers","Responses","Version","Schedule Variance","Content Type",
-                "Created","Created By","Modified By","Attachments","Edit","Type","Item Child Count",
-                "Folder Child Count","Label setting","Retention label","Retention label Applied",
-                "Label applied by","Item is a Record","App Created By","App Modified By","Modified", "Collaborators"
-            }
-        )
+    Final = Table.RenameColumns(ExpandStakeholderUser, {{"Team.Value", "TeamName"}})
 in
     Final
