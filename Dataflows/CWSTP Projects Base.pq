@@ -47,26 +47,14 @@ let
     //
     SP = SharePoint.Tables(SiteUrl, [Implementation="2.0", ViewMode="All"]),
     Projects = SP{[Title=ListName]}[Items],
-
-    //
-    // NORMALIZE PARENT PROJECT
-    //
-    Projects_Parent =
-        Table.ExpandRecordColumn(
-            Table.ExpandListColumn(Projects, "Parent Project"),
-            "Parent Project",
-            {"lookupId","lookupValue"},
-            {"lookupId","lookupValue"}
-        ),
-
-    Projects_TopOnly = Table.SelectRows(Projects_Parent, each [lookupId] = null),
+  #"Filtered rows" = Table.SelectRows(Projects, each ([Type of Action] = "Parent Project")),
 
     //
     // FIX PROGRESS, ROADMAP, ARCHIVED, STATUS
     //
     Projects_Normalized =
         Table.TransformColumns(
-            Projects_TopOnly,
+            #"Filtered rows",
             {
                 {"Progress (%)", each if _ = null then 0 else _, Int64.Type},
                 {"Roadmap_choice", each if _ = "Roadmap" then "True" else if _ = "n/a" or _ = "" then "False" else _, type text},
@@ -126,14 +114,12 @@ let
             }
         ),
 
-    Projects_NoParentCols = Table.RemoveColumns(LowerEmails, {"lookupId","lookupValue"}),
-
     //
     // NORMALIZE TEAM LOOKUP
     //
     NormalizeTeam =
         Table.TransformColumns(
-            Projects_NoParentCols,
+            LowerEmails,
             {
                 {
                     "Team",
