@@ -41,7 +41,7 @@ let
                 {"cr8b0_name"}
             )
         ),
-
+        
     //
     // SHAREPOINT PROJECTS
     //
@@ -200,6 +200,8 @@ let
             {"Stakeholder.systemuserid","Stakeholder.azureactivedirectoryobjectid","Stakeholder.email"}
         ),
 
-    Final = Table.RenameColumns(ExpandStakeholderUser, {{"Team.Value", "TeamName"}})
+
+    Final =
+    Table.RenameColumns(ExpandStakeholderUser, {{"Team.Value", "TeamName"}})
 in
     Final
