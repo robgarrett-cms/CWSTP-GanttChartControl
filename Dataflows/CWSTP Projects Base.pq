@@ -201,7 +201,8 @@ let
         ),
 
 
+    #"Replaced value" = Table.ReplaceValue(ExpandStakeholderUser, "On Hold - pend stakeholder", "On Hold - Pending Stakeholder", Replacer.ReplaceText, {"Status"}),
     Final =
-    Table.RenameColumns(ExpandStakeholderUser, {{"Team.Value", "TeamName"}})
+    Table.RenameColumns(#"Replaced value", {{"Team.Value", "TeamName"}})
 in
     Final
