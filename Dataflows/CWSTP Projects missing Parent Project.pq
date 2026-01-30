@@ -29,8 +29,10 @@ let
         #"ParentProjects",
         {"Source SPOID"},
         "Parent Projects",
-        JoinKind.Inner
+        JoinKind.LeftAnti
     ),
-  #"Renamed columns" = Table.RenameColumns(#"Merged queries", {{"Parent Project.lookupId", "ParentProjectID"}})
+  #"Expanded Parent Projects" = Table.ExpandTableColumn(#"Merged queries", "Parent Projects", {"Source SPOID"}, {"Parent Projects.Source SPOID"}),
+  #"Removed columns" = Table.RemoveColumns(#"Expanded Parent Projects", {"Parent Project.lookupId"}),
+  #"Renamed columns" = Table.RenameColumns(#"Removed columns", {{"Parent Projects.Source SPOID", "ParentProjectID"}})
 in
     #"Renamed columns"
