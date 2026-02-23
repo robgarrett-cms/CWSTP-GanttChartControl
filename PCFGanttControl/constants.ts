@@ -4,7 +4,6 @@ export const fieldNames = {
     endTime: "endDate",
     dueDate: "dueDate",
     progress: "progress",
-    taskType: "taskTypeOption",
     parentRecord: "parentProject",
     displayColorText: "displayColorText",
     displayColorOption: "displayColorOption",

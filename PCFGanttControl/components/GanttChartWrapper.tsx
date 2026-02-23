@@ -34,6 +34,7 @@ interface StateData {
     localeCode: string;
     startFieldName: string;
     endFieldName: string;
+    dueFieldName: string;
     progressFieldName: string;
     recordDisplayName: string;
     startDisplayName: string;
@@ -70,10 +71,11 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
             const name = record?.getValue(fieldNames.title) as string
             const start = record?.getValue(fieldNames.startTime) as string;
             const end = record?.getValue(fieldNames.endTime) as string;
-            // We require at least name, start, and end to create a task.
-            if (!name || !start || !end) continue;
+            const due = record?.getValue(fieldNames.dueDate) as string;
+            // We require at least name, start date, and due date to create a task.
+            if (!name || !start || !due) continue;
             const progress = record?.getValue(fieldNames.progress) as number || 0;
-            const taskTypeOption = record?.getValue(fieldNames.taskType) as number | undefined;
+            const taskTypeOption = 1; // Default to task type for now, later we'll check for milestone.
             const parentRecord = record?.getValue(fieldNames.parentRecord) as ComponentFramework.EntityReference | 0;
             const colorText = record?.getValue(fieldNames.displayColorText) as string;
             const colorOption = record?.getValue(fieldNames.displayColorOption) as string;
@@ -99,7 +101,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                     name,
                     // Start and End times are offsets from UTC in milliseconds.
                     start: new Date(new Date(start).getTime() + props.userTimeOffset * 60000),
-                    end: new Date(new Date(end).getTime() + props.userTimeOffset * 60000),
+                    end: new Date(new Date(due).getTime() + props.userTimeOffset * 60000),
                     progress: progress,
                     type: taskType,
                     isDisabled: (context.parameters.displayMode.raw === "readonly"),
@@ -117,24 +119,24 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                         task.hideChildren = projectsExpanderState[taskId];
                     }
                 }
-                if (parentRecord) {
-                    // Determine if the parent is a project or a task 
-                    // and thus if the current entity is a dependant task or child task
-                    const parentRecordId = parentRecord.id.guid;
-                    const parentRecordRef = entityDataset.records[parentRecordId];
-                    if (parentRecordRef) {
-                        const parentTypeOption = parentRecordRef.getValue(fieldNames.taskType) as number | undefined;
-                        const parentType = getTaskType(parentTypeOption);
-                        if (parentType === "project") {
-                            task.project = parentRecordId;
-                        } else {
-                            task.dependencies = [parentRecordId];
-                        }
-                    }
-                } else if (taskType === "task") {
-                    // We have a standalone task with no dependency.
-                    orphans.push(task);
-                }
+                // if (parentRecord) {
+                //     // Determine if the parent is a project or a task 
+                //     // and thus if the current entity is a dependant task or child task
+                //     const parentRecordId = parentRecord.id.guid;
+                //     const parentRecordRef = entityDataset.records[parentRecordId];
+                //     if (parentRecordRef) {
+                //         const parentTypeOption = parentRecordRef.getValue(fieldNames.taskType) as number | undefined;
+                //         const parentType = getTaskType(parentTypeOption);
+                //         if (parentType === "project") {
+                //             task.project = parentRecordId;
+                //         } else {
+                //             task.dependencies = [parentRecordId];
+                //         }
+                //     }
+                // } else if (taskType === "task") {
+                //     // We have a standalone task with no dependency.
+                orphans.push(task);
+                // }
                 tasks.push(task);
             } catch (e) {
                 throw new Error(
@@ -290,6 +292,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                     localeCode: "en",
                     startFieldName: "",
                     endFieldName: "",
+                    dueFieldName: "",
                     progressFieldName: "",
                     recordDisplayName: "",
                     startDisplayName: "",
@@ -315,6 +318,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 const nameField = columns.find((c) => c.name === fieldNames.title)!;
                 const startField = columns.find((c) => c.name === fieldNames.startTime)!;
                 const endField = columns.find((c) => c.name === fieldNames.endTime)!;
+                const dueField = columns.find((c) => c.name === fieldNames.dueDate)!;
                 const progressField = columns.find((c) => c.name === fieldNames.progress);
 
                 // Get the items from the dataset.
@@ -341,6 +345,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 // Field names.
                 stateBag.startFieldName = startField.name;
                 stateBag.endFieldName = endField.name;
+                stateBag.dueFieldName = dueField.name;
                 stateBag.progressFieldName = progressField ? progressField.name : "";
                 stateBag.isProgressing = !!progressField;
                 // Header Display names.
@@ -375,7 +380,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
     const render = () => {
         if (error) {
             return <div className="error-message">{error}</div>
-        } else if (loading) { 
+        } else if (loading) {
             return <div className="loading-indicator">Loading Gantt Chart...</div>
         } else if (stateData) {
             return <div className='pcf-container' style={stateData.ganttWidth ? { width: `${stateData.ganttWidth}px` } : {}}>
@@ -390,7 +395,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                     endDisplayName={stateData.endDisplayName}
                     progressDisplayName={stateData.progressDisplayName}
                     startFieldName={stateData.startFieldName}
-                    endFieldName={stateData.endFieldName}
+                    endFieldName={stateData.dueFieldName}
                     progressFieldName={stateData.progressFieldName}
                     isProgressing={stateData.isProgressing}
                     viewMode={stateData.viewMode}
