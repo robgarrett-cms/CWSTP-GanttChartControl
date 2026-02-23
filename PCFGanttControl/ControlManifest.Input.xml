@@ -1,30 +1,24 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="CMS.CWSTP" constructor="PCFGanttControl" version="1.1.1" display-name-key="PCFGanttControl" description-key="PCFGanttControl description" control-type="virtual">
+  <control namespace="CMS.CWSTP" constructor="PCFGanttControl" version="1.1.3" display-name-key="PCFGanttControl" description-key="PCFGanttControl description" control-type="virtual">
     <external-service-usage enabled="false">
     </external-service-usage>
-    <type-group name="Date.All">
-      <type>DateAndTime.DateAndTime</type>
-      <type>DateAndTime.DateOnly</type>
-    </type-group>
     <!-- dataset node represents a set of entity records on CDS; allow more than one datasets -->
     <data-set name="entityDataSet" display-name-key="Entity-Grid" cds-data-set-options="displayCommandBar:true;displayViewSelector:true;displayQuickFind:true">
       <!-- Name of the task (required) -->
       <property-set name="title" display-name-key="Title" description-key="Record Name for displaying on grid" of-type="SingleLine.Text" usage="input" required="true" />
-      <!-- Start date for the task (required) -->
-      <property-set name="startTime" display-name-key="Start" description-key="Scheduled start date and time" of-type-group="Date.All" usage="input" required="true" />
-      <!-- End date for the task (required) -->
-      <property-set name="endTime" display-name-key="End" description-key="Scheduled end date and time" of-type-group="Date.All" usage="input" required="true" />
+      <!-- Start date for the task (optional) -->
+      <property-set name="startDate" display-name-key="Start Date" description-key="Scheduled start date" of-type="DateAndTime.DateOnly" usage="input" required="false" />
+      <!-- End date for the task (optional) -->
+      <property-set name="endDate" display-name-key="End Date" description-key="Scheduled end date" of-type="DateAndTime.DateOnly" usage="input" required="false" />
+      <!-- Due date for the task (required) -->
+      <property-set name="dueDate" display-name-key="Due Date" description-key="Scheduled due date" of-type="DateAndTime.DateOnly" usage="input" required="true" />
       <!-- Progress of the task (required) -->
       <property-set name="progress" display-name-key="Progress" description-key="From 0 to 100. Whole Number" of-type="Whole.None" usage="input" required="true" />
-      <!-- Parent task - look up to an existing record in this dataset -->
-      <property-set name="parentRecord" display-name-key="Parent Record" description-key="Parent record reference" of-type="Lookup.Simple" usage="input" required="false" />
+      <!-- Parent project - look up to an existing record in this dataset -->
+      <property-set name="parentProject" display-name-key="Parent Project" description-key="Parent record reference" of-type="Lookup.Simple" usage="input" required="false" />
       <!-- Task type choice 1 = Task (default), 2 = milestone, 3 = project -->
       <property-set name="taskTypeOption" display-name-key="Task Type(Option)" description-key="Specifies record type. Task, milestone, project. You are able to configure option-text mapping in Task Type Mapping parameter." of-type="OptionSet" usage="input" required="false" />
-      <!-- Color for the task using an option set -->
-      <property-set name="displayColorOption" display-name-key="Display Color(Option)" description-key="Specifies record color by option value(hex code)" of-type="OptionSet" usage="input" required="false" />
-      <!-- Color as a text hex value, overrides the option set value -->
-      <property-set name="displayColorText" display-name-key="Display Color(Text)" description-key="Specifies record color by text value(hex code)" of-type="SingleLine.Text" usage="input" required="false" />
     </data-set>
     <!-- Toggle whether Gantt chart is read-only or editable -->
     <property name="displayMode" display-name-key="Display Mode" description-key="Parameter enables or disables progress and datetime controls" of-type="Enum" usage="input" required="true" default-value="editable">

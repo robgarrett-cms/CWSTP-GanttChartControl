@@ -301,10 +301,12 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                     ...(stateData || {}),
                 };
 
-                // Get the columns
+                // Use the property-set names so that we don't have to worry about the names of the columns in the dataset, 
+                // just that they are mapped correctly in the control manifest.
                 const columns = entityDataset.columns.sort((column1, column2) => column1.order - column2.order).map((column) => {
                     return {
-                        name: column.displayName,
+                        name: column.alias,
+                        displayName: column.displayName,
                         fieldName: column.name,
                         minWidth: column.visualSizeFactor,
                         key: column.name
