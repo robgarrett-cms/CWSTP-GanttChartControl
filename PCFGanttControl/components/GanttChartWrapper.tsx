@@ -68,6 +68,8 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
         // Iterate the records (entities) in the dataset.
         for (const item of items) {
             const record = (item as Record<string, unknown>).raw as EntityRecord;
+            const taskId = record?.getValue(fieldNames.taskId) as string;
+            console.info(`Processing record with id ${taskId}`);
             const name = record?.getValue(fieldNames.title) as string
             const start = record?.getValue(fieldNames.startTime) as string;
             const end = record?.getValue(fieldNames.endTime) as string;
@@ -75,10 +77,12 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
             // We require at least name, start date, and due date to create a task.
             if (!name || !start || !due) continue;
             const progress = record?.getValue(fieldNames.progress) as number || 0;
-            const taskTypeOption = 1; // Default to task type for now, later we'll check for milestone.
             const parentRecord = record?.getValue(fieldNames.parentRecord) as ComponentFramework.EntityReference | 0;
+            const isStandaloneTask = record?.getValue(fieldNames.isStandalone) as boolean | undefined;
+            const isMilestone = record?.getValue(fieldNames.isMilestone) as boolean | undefined;
             const colorText = record?.getValue(fieldNames.displayColorText) as string;
             const colorOption = record?.getValue(fieldNames.displayColorOption) as string;
+            const taskTypeOption = isMilestone ? 2 : 1;
             const taskType = getTaskType(taskTypeOption);
             const optionColumn = entityDataset.columns.find((c) => c.alias == fieldNames.displayColorOption);
             const optionLogicalName = optionColumn ? optionColumn.name : "";
@@ -119,6 +123,24 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                         task.hideChildren = projectsExpanderState[taskId];
                     }
                 }
+                if (isStandaloneTask) {
+                    orphans.push(task);
+                } else if (parentRecord) {
+                    // Process the parent.
+                    const parentRecordId = parentRecord.id.guid;
+                    const parentRecordRef = entityDataset.records[parentRecordId];
+                    if (parentRecordRef) {
+                        const isParentAnotherTask = parentRecordRef.getValue(fieldNames.isStandalone) as boolean | undefined;
+                        if (isParentAnotherTask ?? true) {
+                            task.dependencies = [parentRecordId];
+                        } else {
+                            task.project = parentRecordId;
+                        }
+                    }
+                } else {
+                    // We have a standalone task with no dependency.
+                    continue;
+                }
                 // if (parentRecord) {
                 //     // Determine if the parent is a project or a task 
                 //     // and thus if the current entity is a dependant task or child task
@@ -135,7 +157,7 @@ export const GanttChartWrapper = React.memo((props: IGanttChartWrapperProps): JS
                 //     }
                 // } else if (taskType === "task") {
                 //     // We have a standalone task with no dependency.
-                orphans.push(task);
+                //orphans.push(task);
                 // }
                 tasks.push(task);
             } catch (e) {
