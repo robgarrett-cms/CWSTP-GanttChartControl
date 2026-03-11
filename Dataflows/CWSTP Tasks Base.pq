@@ -4,159 +4,55 @@ let
     //
     SiteUrl = "https://cmsgovonline.sharepoint.com/sites/CWSTPTeam",
     ListName = "CWSTP Project and Task Management",
+
     //
-    // LOAD DATAVERSE ONCE
+    // LOAD DATAVERSE
     //
     CDS = CommonDataService.Database("org6cd1f51e.crm9.dynamics.com"),
-    //
-    // USERS DIMENSION
-    //
-    Users_Raw = CDS{[Schema = "dbo", Item = "cr8b0_cwstp_users_dim"]}[Data],
-    Users_Clean = Table.Buffer(
-        Table.TransformColumnNames(
-            Table.SelectColumns(
-                Users_Raw,
-                {
-                    "cr8b0_azureactivedirectoryobjectid",
-                    "cr8b0_internalemailaddress",
-                    "cr8b0_isdisabled",
-                    "cr8b0_systemuserid"
-                }
-            ),
-            each Text.AfterDelimiter(_, "_")
-        )
-    ),
-    //
-    // TEAMS DIMENSION
-    //
-    Teams_Raw = CDS{[Schema="dbo", Item="cr8b0_cwstp_team"]}[Data],
-    Teams_Clean =
-        Table.Buffer(
-            Table.SelectColumns(
-                Teams_Raw,
-                {"cr8b0_name"}
-            )
-        ),
+
+    // Users Table Setup (Lowercased & Buffered for performance)
+    Users_Raw = CDS{[Schema="dbo", Item="cr8b0_cwstpusers"]}[Data],
+    Users_Lower = Table.TransformColumns(Users_Raw, {{"cr8b0_email", Text.Lower, type text}}),
+    Users_Clean = Table.Buffer(Table.SelectColumns(Users_Lower, {"cr8b0_aadobjectid", "cr8b0_email", "cr8b0_id"})),
+
     //
     // SHAREPOINT TASKS
     //
-    SP = SharePoint.Tables(SiteUrl, [Implementation = "2.0", ViewMode = "All"]),
-    Tasks = SP{[Title = ListName]}[Items],
-    #"Filtered rows" = Table.SelectRows(Tasks, each ([Type of Action] <> "Parent Project")),
-    //
-    // FIX PROGRESS, ROADMAP, ARCHIVED, STATUS
-    //
-    Tasks_Normalized = Table.TransformColumns(
-        #"Filtered rows",
-        {
-            {"Progress (%)", each if _ = null then 0 else _, Int64.Type},
-            {"Roadmap_choice", each if _ = "Roadmap" then "True" else if _ = "n/a" or _ = "" then "False" else _,
-            type text},
-            {"Archived", each if _ = null then false else _, type logical},
-            {"Status", each if _ = "" then "Not Started" else _, type text}
-        }
-    ),
-    Tasks_RoadmapBool = Table.TransformColumnTypes(Tasks_Normalized, {{"Roadmap_choice", type logical}}),
-    //
-    // FORCE PROGRESS TO 100 IF STATUS = COMPLETE
-    //
-    Tasks_Progress = Table.TransformColumns(
-        Table.AddColumn(
-            Tasks_RoadmapBool,
-            "ProgressTemp",
-            each if Text.Lower([Status]) = "complete" then 100 else [#"Progress (%)"],
-            Int64.Type
-        ),
-        {{"ProgressTemp", each _, Int64.Type}}
-    ),
-    Tasks_FinalProgress = Table.RenameColumns(
-        Table.RemoveColumns(Tasks_Progress, {"Progress (%)"}), {{"ProgressTemp", "Progress (%)"}}
-    ),
-    //
-    // OWNER + STAKEHOLDER EMAILS
-    //
-    ExpandOwner = Table.ExpandRecordColumn(
-        Table.ExpandListColumn(Tasks_FinalProgress, "Owner"), "Owner", {"email"}, {"OwnerEmail"}
-    ),
-    ExpandStakeholder = Table.ExpandRecordColumn(
-        Table.ExpandListColumn(ExpandOwner, "CMS Stakeholder"), "CMS Stakeholder", {"email"}, {"StakeholderEmail"}
-    ),
-    LowerEmails = Table.TransformColumns(
-        ExpandStakeholder,
-        {
-            {"OwnerEmail", each Text.Lower(Text.From(_)), type nullable text},
-            {"StakeholderEmail", each Text.Lower(Text.From(_)), type nullable text}
-        }
-    ),
-    //
-    // NORMALIZE TEAM LOOKUP
-    //
-    NormalizeTeam =
-        Table.TransformColumns(
-            LowerEmails,
-            {
-                {
-                    "Team",
-                    each
-                        if _ is null then {}
-                        else if _ is list then _
-                        else if _ is record then {_}
-                        else if _ is text then { [Value = _, Id = null] }
-                        else {},
-                    type list
-                }
-            }
-        ),
+    SP = SharePoint.Tables(SiteUrl, [Implementation="2.0", ViewMode="All"]),
+    Source = SP{[Title=ListName]}[Items],
+    
+    // Filter for Tasks (Adjust "Task" string if your SharePoint value differs)
+    #"Filtered Tasks" = Table.SelectRows(Source, each ([Type of Action] <> "Parent Project")),
 
-    ExpandTeam =
-        Table.ExpandRecordColumn(
-            Table.ExpandListColumn(NormalizeTeam, "Team"),
-            "Team",
-            {"Value"},
-            {"Team.Value"}
-        ),
+    //
+    // NORMALIZE TASK DATA
+    //
+    Tasks_Normalized = Table.TransformColumns(#"Filtered Tasks", {
+        {"Progress (%)", each if _ = null then 0 else _, Int64.Type},
+        {"Archived", each if _ = null then false else _, type logical},
+        {"Status", each if _ = "" or _ = null then "Not Started" else _, type text}
+    }),
 
-    CleanTeamValue =
-        Table.TransformColumns(
-            ExpandTeam,
-            {{"Team.Value", each Text.Trim(Text.Clean(_)), type text}}
-        ),
     //
-    // MERGE TEAMS
+    // OWNER + STAKEHOLDER EMAILS (Expanding records)
     //
-    MergeTeams =
-        Table.NestedJoin(
-            CleanTeamValue,
-            {"Team.Value"},
-            Teams_Clean,
-            {"cr8b0_name"},
-            "TeamDV",
-            JoinKind.LeftOuter
-        ),
+    ExpandOwner = Table.ExpandRecordColumn(Table.ExpandListColumn(Tasks_Normalized, "Owner"), "Owner", {"email"}, {"OwnerEmail"}),
+    ExpandStakeholder = Table.ExpandRecordColumn(Table.ExpandListColumn(ExpandOwner, "CMS Stakeholder"), "CMS Stakeholder", {"email"}, {"StakeholderEmail"}),
+
+    LowerEmails = Table.TransformColumns(ExpandStakeholder, {
+        {"OwnerEmail", each Text.Lower(Text.From(_)), type nullable text},
+        {"StakeholderEmail", each Text.Lower(Text.From(_)), type nullable text}
+    }),
+
     //
-    // MERGE OWNER + STAKEHOLDER
+    // JOIN USER TABLE (MATCHING ON EMAIL)
     //
-    MergeOwner = Table.NestedJoin(
-        MergeTeams, {"OwnerEmail"}, Users_Clean, {"internalemailaddress"}, "OwnerUser", JoinKind.LeftOuter
-    ),
-    MergeStakeholder = Table.NestedJoin(
-        MergeOwner, {"StakeholderEmail"}, Users_Clean, {"internalemailaddress"}, "StakeholderUser",
-        JoinKind.LeftOuter
-    ),
-    ExpandOwnerUser = Table.ExpandTableColumn(
-        MergeStakeholder,
-        "OwnerUser",
-        {"systemuserid", "azureactivedirectoryobjectid", "internalemailaddress"},
-        {"Owner.systemuserid", "Owner.azureactivedirectoryobjectid", "Owner.email"}
-    ),
-    ExpandStakeholderUser = Table.ExpandTableColumn(
-        ExpandOwnerUser,
-        "StakeholderUser",
-        {"systemuserid", "azureactivedirectoryobjectid", "internalemailaddress"},
-        {"Stakeholder.systemuserid", "Stakeholder.azureactivedirectoryobjectid", "Stakeholder.email"}
-    ),
-  #"Replaced value" = Table.ReplaceValue(ExpandStakeholderUser, "On Hold - pend stakeholder", "On Hold - Pending Stakeholder", Replacer.ReplaceText, {"Status"}),
-    Final =
-    Table.RenameColumns(#"Replaced value", {{"Team.Value", "TeamName"}})
+    JoinOwner = Table.NestedJoin(LowerEmails, {"OwnerEmail"}, Users_Clean, {"cr8b0_email"}, "Owner_Data", JoinKind.LeftOuter),
+    JoinStakeholder = Table.NestedJoin(JoinOwner, {"StakeholderEmail"}, Users_Clean, {"cr8b0_email"}, "Stakeholder_Data", JoinKind.LeftOuter),
+  #"Expanded Owner_Data" = Table.ExpandTableColumn(JoinStakeholder, "Owner_Data", {"cr8b0_aadobjectid", "cr8b0_email", "cr8b0_id"}, {"Owner_Data.cr8b0_aadobjectid", "Owner_Data.cr8b0_email", "Owner_Data.cr8b0_id"}),
+  #"Expanded Stakeholder_Data" = Table.ExpandTableColumn(#"Expanded Owner_Data", "Stakeholder_Data", {"cr8b0_aadobjectid", "cr8b0_email", "cr8b0_id"}, {"Stakeholder_Data.cr8b0_aadobjectid", "Stakeholder_Data.cr8b0_email", "Stakeholder_Data.cr8b0_id"}),
+  #"Renamed columns" = Table.RenameColumns(#"Expanded Stakeholder_Data", {{"Stakeholder_Data.cr8b0_id", "Stakeholder_ID"}, {"Stakeholder_Data.cr8b0_email", "Stakeholder_Email"}, {"Stakeholder_Data.cr8b0_aadobjectid", "Stakeholder_AADObjectId"}, {"Owner_Data.cr8b0_id", "Owner_ID"}, {"Owner_Data.cr8b0_email", "Owner_Email"}, {"Owner_Data.cr8b0_aadobjectid", "Owner_AADObjectId"}}),
+  #"Replaced value" = Table.ReplaceValue(#"Renamed columns", "On Hold - pend stakeholder", "On Hold - Pending Stakeholder", Replacer.ReplaceText, {"Status"})
+
 in
-    Final
+    #"Replaced value"
