@@ -1,21 +1,8 @@
 let
     Source = #"Projects Base",
   #"Sorted rows" = Table.Sort(Source, {{"ID", Order.Ascending}}),
-  #"Reordered columns" = Table.ReorderColumns(#"Sorted rows", {"Priority", "ID", "Title", "Due Date", "Status", "Outcome / Definition of Done", "Start Date", "End Date", "File URLs", "Notes/Comments", "External Dependencies", "Risks to Project or Task", "Collaborators", "StakeholderEmail", "OwnerEmail", "Roadmap_choice", "Type of Action", "Parent Project", "Color Tag", "Compliance Asset Id", "Archived", "Dependent Tasks", "Impact on Roadmap", "Approvers", "Responses", "Approval Creator", "Approval status", "TeamName", "Program Area", "Modified", "Frequency", "Contract Period", "Version", "Schedule Variance", "HHS OCIO Goal", "Content Type", "Created", "Created By", "Modified By", "Attachments", "Edit", "Type", "Item Child Count", "Folder Child Count", "Label setting", "Retention label", "Retention label Applied", "Label applied by", "Item is a Record", "App Created By", "App Modified By", "Progress (%)", "TeamDV", "Owner.systemuserid", "Owner.azureactivedirectoryobjectid", "Owner.email", "Stakeholder.systemuserid", "Stakeholder.azureactivedirectoryobjectid", "Stakeholder.email"}),
-
-    //
-    // REMOVE NOISE COLUMNS
-    //
-    Final =
-        Table.RemoveColumns(
-            #"Reordered columns",
-            {
-                "Dependent Tasks","Color Tag","Compliance Asset Id","Approval Creator",
-                "Approval status","Approvers","Responses","Version","Schedule Variance","Content Type",
-                "Created","Created By","Modified By","Attachments","Edit","Type","Item Child Count",
-                "Folder Child Count","Label setting","Retention label","Retention label Applied",
-                "Label applied by","Item is a Record","App Created By","App Modified By","Modified", "Collaborators", "TeamDV"
-            }
-        )
+  #"Choose columns" = Table.SelectColumns(#"Sorted rows", {"Priority", "Due Date", "Status", "Title", "Outcome / Definition of Done", "Start Date", "End Date", "File URLs", "Notes/Comments", "External Dependencies", "Risks to Project or Task", "Roadmap_choice", "Type of Action", "Parent Project", "Archived", "Impact on Roadmap", "TeamName", "Program Area", "Frequency", "Contract Period", "ID", "HHS OCIO Goal", "Work Type", "Type", "Progress (%)", "TeamDV.cr8b0_name", "Owner_AADObjectId", "Owner_Email", "Owner_ID", "Stakeholder_AADObjectId", "Stackeholder_Email", "Stakeholder_ID"}),
+  #"Removed columns" = Table.RemoveColumns(#"Choose columns", {"Type of Action", "Parent Project"}),
+  #"Renamed columns" = Table.RenameColumns(#"Removed columns", {{"TeamDV.cr8b0_name", "Team"}})
 in
-    Final
+    #"Renamed columns"
